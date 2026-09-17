@@ -1,0 +1,62 @@
+/* Quizoe Layout CSS - Modern, Spacious Layouts */
+
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --primary-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --premium-gradient: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #431407 100%);
+  --success-gradient: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+  --gold-gradient: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Base structural setups */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.max-content-container {
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

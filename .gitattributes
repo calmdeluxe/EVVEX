@@ -1,0 +1,20 @@
+# Force binary handling for binary assets
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff2 binary
+*.woff binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.apk binary
+*.aab binary
+*.zip binary
+
+# Ensure shell scripts always use LF line endings
+*.sh text eol=lf
+gradlew text eol=lf

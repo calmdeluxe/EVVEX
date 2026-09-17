@@ -1,0 +1,92 @@
+/* Quizoe Admin Dashboard CSS */
+
+.admin-grid-cols {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .admin-grid-cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-grid-cols {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Beautiful Admin Data Tables */
+.admin-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admin-table th {
+  background-color: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 2px solid var(--border);
+}
+
+.admin-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.admin-table tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Chart bars */
+.admin-chart-bar {
+  background: var(--primary-gradient);
+  border-radius: 4px;
+  min-height: 24px;
+  transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Admin Sidebar Layout */
+.admin-sidebar {
+  width: 260px;
+  background-color: #0c0f1d;
+  color: #94a3b8;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.admin-sidebar-item:hover, .admin-sidebar-item.active {
+  background-color: #1e293b;
+  color: #ffffff;
+}
+
+.admin-sidebar-item.active {
+  border-left: 4px solid var(--primary);
+}

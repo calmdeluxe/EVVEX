@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>CalmReader — Read, Trivia, Earn</title>
+    <meta name="description" content="Engage with premium eBook content, test your reading comprehension in active trivia challenges, and earn T-Points and rewards instantly on CalmReader." />
+    
+    <!-- PWA Meta Tags & Manifest -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#2E7D32" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CalmReader" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d97706'%3E%3Cpath d='M21 5c-1.11-.9-2.58-1.4-4-1.4-1.35 0-2.72.33-4 .84C11.72 3.93 10.35 3.6 9 3.6c-1.42 0-2.89.5-4 1.4-1.1.9-1.7 2.2-1.7 3.6v11.1c0 .5.42.84.9.84.11 0 .22-.03.33-.07C5.64 20.01 7.28 19.5 9 19.5c1.65 0 3.3.5 4.5 1.4 1.1-.9 2.75-1.4 4.5-1.4 1.72 0 3.36.51 4.51 1.03.1.04.21.07.33.07.48 0 .9-.34.9-.84V8.6c0-1.4-.6-2.7-1.7-3.6zM9 18c-1.35 0-2.72.33-4 .84V6.83c1.11-.9 2.58-1.43 4-1.43 1.35 0 2.72.33 4 .84v11.93C11.72 17.67 10.35 18 9 18zm10 .84c-1.28-.51-2.65-.84-4-.84-1.35 0-2.72.33-4 .84V6.24c1.28-.51 2.65-.84 4-.84 1.42 0 2.89.53 4 1.43v12.01z'/%3E%3C/svg%3E" />
+    
+    <script>
+      // Register Service Worker for PWA Offline Caching and Installation support
+      if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+        var isDevEnv = window.location.hostname === 'localhost' || 
+                       window.location.hostname.includes('run.app') || 
+                       window.location.port === '3000' || 
+                       window.location.port === '5173';
+        if (isDevEnv) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          }).catch(function() {});
+        } else {
+          function registerSW() {
+            navigator.serviceWorker.register('/sw.js', { scope: '/' })
+              .then(function(reg) {
+                console.log('[Service Worker] Registered successfully on scope:', reg.scope);
+              })
+              .catch(function(err) {
+                console.warn('[Service Worker] Registration handled gracefully:', err.message || err);
+              });
+          }
+          if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            registerSW();
+          } else {
+            window.addEventListener('load', registerSW);
+          }
+        }
+      }
+
+      // Global stashing of the beforeinstallprompt event for custom install triggers
+      let deferredPrompt = null;
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        window.deferredPrompt = e;
+        console.log('[PWA] beforeinstallprompt event fired and stashed.');
+        // Notify any active React listeners
+        window.dispatchEvent(new CustomEvent('pwa-installable', { detail: { deferredPrompt: e } }));
+        window.dispatchEvent(new CustomEvent('pwa-installable-change', { detail: { installable: true } }));
+      });
+
+      window.addEventListener('appinstalled', (e) => {
+        deferredPrompt = null;
+        window.deferredPrompt = null;
+        console.log('[PWA] appinstalled event fired. App is successfully installed.');
+        // Notify active React listeners
+        window.dispatchEvent(new CustomEvent('pwa-installable', { detail: { deferredPrompt: null } }));
+        window.dispatchEvent(new CustomEvent('pwa-installable-change', { detail: { installable: false } }));
+      });
+    </script>
+    <script>
+      console.log("[Index] Bootstrap script running");
+      // Resilient memory-fallback storage polyfill for sandboxed/cross-origin iframe views
+      (function() {
+        var storageTypes = ['localStorage', 'sessionStorage'];
+        for (var i = 0; i < storageTypes.length; i++) {
+          var type = storageTypes[i];
+          var storageAvailable = false;
+          try {
+            var storage = window[type];
+            var testKey = '__storage_test__';
+            storage.setItem(testKey, testKey);
+            storage.removeItem(testKey);
+            storageAvailable = true;
+          } catch (e) {
+            console.warn("[Storage] Native " + type + " is blocked or throws error: ", e);
+          }
+
+          if (!storageAvailable) {
+            console.warn("[Storage] Creating resilient in-memory fallback getter for " + type);
+            var mockStorage = (function() {
+              var store = {};
+              return {
+                getItem: function(key) {
+                  return key in store ? store[key] : null;
+                },
+                setItem: function(key, value) {
+                  store[key] = String(value);
+                },
+                removeItem: function(key) {
+                  delete store[key];
+                },
+                clear: function() {
+                  store = {};
+                },
+                get length() {
+                  return Object.keys(store).length;
+                },
+                key: function(index) {
+                  var keys = Object.keys(store);
+                  return keys[index] || null;
+                }
+              };
+            })();
+            
+            // Try overriding on Window prototype first (most reliable for read-only window properties)
+            try {
+              Object.defineProperty(Window.prototype, type, {
+                get: function() { return mockStorage; },
+                configurable: true
+              });
+              console.log("[Storage] Polyfilled " + type + " on Window.prototype successfully.");
+            } catch (errProto) {
+              console.warn("[Storage] Failed prototype override for " + type + ", trying fallback defineProperty on window:", errProto);
+              try {
+                Object.defineProperty(window, type, {
+                  value: mockStorage,
+                  configurable: true,
+                  writable: true
+                });
+                console.log("[Storage] Polyfilled " + type + " on window object successfully.");
+              } catch (errWin) {
+                try {
+                  window[type] = mockStorage;
+                  console.log("[Storage] Polyfilled " + type + " via direct window assignment successfully.");
+                } catch (errWinDirect) {
+                  console.error("[Storage] Critical: could not override " + type, errWinDirect);
+                }
+              }
+            }
+          }
+        }
+      })();
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.error("[Index] Runtime Error:", message, source, lineno);
+        
+        // Ignore benign, non-fatal, development-specific or websocket error messages
+        var msgStr = String(message || '').toLowerCase();
+        var srcStr = String(source || '').toLowerCase();
+        if (
+          msgStr.indexOf('resizeobserver') !== -1 ||
+          msgStr.indexOf('websocket') !== -1 ||
+          msgStr.indexOf('script error') !== -1 ||
+          msgStr.indexOf('extension') !== -1 ||
+          msgStr.indexOf('vite') !== -1 ||
+          srcStr.indexOf('extension') !== -1
+        ) {
+          return false;
+        }
+
+        var reportError = function() {
+          var div = document.getElementById('error-banner');
+          if (!div) {
+            div = document.createElement('div');
+            div.id = 'error-banner';
+            div.style.position = 'fixed';
+            div.style.top = '20px';
+            div.style.right = '20px';
+            div.style.maxWidth = '400px';
+            div.style.backgroundColor = '#fff5f5';
+            div.style.color = '#c53030';
+            div.style.border = '1px solid #feb2b2';
+            div.style.padding = '16px';
+            div.style.zIndex = '99999999';
+            div.style.borderRadius = '12px';
+            div.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)';
+            div.style.fontFamily = 'system-ui, sans-serif';
+            div.style.fontSize = '12px';
+            div.style.lineHeight = '1.5';
+            document.body.appendChild(div);
+          }
+          div.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
+                            '<div>' +
+                              '<strong style="font-weight:700; color:#9b2c2c; display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em; font-size:10px;">Diagnostic Warning</strong>' +
+                              '<span style="display:block; max-height:80px; overflow-y:auto; word-break:break-word;">' + message + '</span>' +
+                              '<span style="color:#a0aec0; font-size:10px; display:block; margin-top:6px;">' + source + ' (' + lineno + ':' + colno + ')</span>' +
+                              '<div style="margin-top:10px; display:flex; gap:8px;">' +
+                                '<button onclick="window.location.reload()" style="background:#e53e3e; color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:700; font-size:10px; cursor:pointer;">RELOAD</button>' +
+                                '<button onclick="document.getElementById(\'error-banner\').style.display=\'none\'" style="background:#edf2f7; color:#4a5568; border:none; padding:6px 12px; border-radius:6px; font-weight:700; font-size:10px; cursor:pointer;">DISMISS</button>' +
+                              '</div>' +
+                            '</div>' +
+                            '<button onclick="document.getElementById(\'error-banner\').style.display=\'none\'" style="background:none; border:none; color:#a0aec0; cursor:pointer; font-size:16px; font-weight:bold; padding:0; line-height:1;">&times;</button>' +
+                          '</div>';
+          div.style.display = 'block';
+          
+          var warning = document.getElementById('no-js-warning');
+          if (warning) warning.style.display = 'block';
+        };
+        
+        if (document.body) {
+          reportError();
+        } else {
+          window.addEventListener('DOMContentLoaded', reportError);
+        }
+        return false;
+      };
+      
+      window.onunhandledrejection = function(event) {
+        console.warn("[Index] Unhandled Rejection (non-fatal):", event.reason);
+      };
+    </script>
+    <script type="module" crossorigin src="./assets/index-7Ae1j9kZ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C4I3n-F6.css">
+  </head>
+  <body>
+    <!-- Real-time Console Logs Memory Collector -->
+    <script>
+      (function(){
+        window.__APP_LOGS__ = window.__APP_LOGS__ || [];
+        var log = console.log;
+        var warn = console.warn;
+        var error = console.error;
+
+        function addLog(msg, type) {
+          try {
+            var timestamp = new Date().toLocaleTimeString();
+            window.__APP_LOGS__.push({
+              type: type,
+              message: msg,
+              time: timestamp
+            });
+            if (window.__APP_LOGS__.length > 500) {
+              window.__APP_LOGS__.shift();
+            }
+            // Broadcast event so Admin Panel can update React state in real-time
+            var event = new CustomEvent('newapplog', { detail: { type: type, message: msg, time: timestamp } });
+            window.dispatchEvent(event);
+          } catch(e) {}
+        }
+
+        function safeJoin(args) {
+          try {
+            return Array.from(args).map(function(arg) {
+              try {
+                if (typeof arg === 'object' && arg !== null) {
+                  return JSON.stringify(arg);
+                }
+                return String(arg);
+              } catch(e) {
+                return String(arg);
+              }
+            }).join(' ');
+          } catch(e) {
+            return "[Serialization Error]";
+          }
+        }
+
+        console.log = function() { 
+          try { addLog(safeJoin(arguments), 'log'); } catch(e) {}
+          log.apply(console, arguments); 
+        };
+        console.warn = function() { 
+          try { addLog(safeJoin(arguments), 'warn'); } catch(e) {}
+          warn.apply(console, arguments); 
+        };
+        console.error = function() { 
+          try { addLog(safeJoin(arguments), 'error'); } catch(e) {}
+          error.apply(console, arguments); 
+        };
+      })();
+    </script>
+    <div id="no-js-warning" style="padding: 20px; background: #fffbeb; border: 1px solid #fcd34d; margin: 20px; border-radius: 8px; font-family: sans-serif; display: none;">
+      <h3 style="color: #92400e; margin-top: 0;">App takes too long to load?</h3>
+      <p style="color: #b45309; font-size: 14px;">Please refresh the page or check your internet connection.</p>
+      <div id="admin-actions"></div>
+    </div>
+    <script>
+      setTimeout(function() {
+        var root = document.getElementById('root');
+        if (root && root.innerHTML === "" && !window.__REACT_STARTED__) {
+          // Only show for the owner
+          var isOwner = false;
+          try {
+            for (var i = 0; i < localStorage.length; i++) {
+              var key = localStorage.key(i);
+              if (key && key.indexOf('auth-token') !== -1) {
+                var data = JSON.parse(localStorage.getItem(key));
+                if (data && data.user && data.user.email === 'samuelchukwuemeke05@gmail.com') {
+                  isOwner = true;
+                  break;
+                }
+              }
+            }
+          } catch(e) {
+            console.warn("[Index] Failed to check owner status", e);
+          }
+          
+          if (isOwner) {
+            document.getElementById('no-js-warning').style.display = 'block';
+            document.getElementById('admin-actions').innerHTML = '<a href="/setup" style="display: inline-block; background: #d97706; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; margin-top: 10px;">Go to Setup Diagnostic</a>';
+          }
+        }
+      }, 8000);
+    </script>
+    <div id="root"></div>
+  </body>
+</html>
+
