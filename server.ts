@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
@@ -515,7 +516,218 @@ export async function startServer() {
     }),
   );
 
+  app.post(
+    "/api/paystack-webhook",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      const signature = req.headers["x-paystack-signature"];
+      const secret = cleanSecret(process.env.PAYSTACK_SECRET_KEY);
+      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from("");
+      const expectedSignature = secret
+        ? crypto.createHmac("sha512", secret).update(rawBody).digest("hex")
+        : "";
+      const receivedSignature = Array.isArray(signature) ? signature[0] : signature;
+      const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+      const receivedBuffer = Buffer.from(receivedSignature || "", "utf8");
+
+      if (
+        !secret ||
+        !receivedSignature ||
+        expectedBuffer.length !== receivedBuffer.length ||
+        !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
+      ) {
+        return res.status(401).json({ ok: false, error: "Invalid signature" });
+      }
+
+      let event: any;
+      try {
+        event = JSON.parse(rawBody.toString("utf8"));
+      } catch {
+        return res.status(400).json({ ok: false, error: "Invalid JSON payload" });
+      }
+
+      const reference = event?.data?.reference;
+      if (typeof reference !== "string" || !reference) {
+        return res.status(400).json({ ok: false, error: "Missing payment reference" });
+      }
+
+      const adminSupabase = getSupabaseAdmin();
+      const { data: processedWebhook, error: processedWebhookError } = await adminSupabase
+        .from("processed_webhook_refs")
+        .select("reference")
+        .eq("reference", reference)
+        .maybeSingle();
+
+      if (processedWebhookError) {
+        console.error("[Paystack Webhook] Idempotency check failed:", processedWebhookError.message);
+        return res.status(500).json({ ok: false, error: "Webhook processing unavailable" });
+      }
+
+      if (processedWebhook) {
+        return res.status(200).json({ ok: true });
+      }
+
+      if (event?.event !== "charge.success" || event?.data?.metadata?.type !== "event_ticket") {
+        return res.status(200).json({ ok: true });
+      }
+
+      const metadata = event.data.metadata;
+      const {
+        event_id: eventId,
+        tier_id: tierId,
+        user_id: userId,
+        attendee_name: attendeeName,
+        attendee_email: attendeeEmail,
+        attendee_phone: attendeePhone,
+        ticket_number: ticketNumber,
+      } = metadata;
+
+      if (
+        !eventId ||
+        !tierId ||
+        !userId ||
+        !attendeeName ||
+        !attendeeEmail ||
+        !attendeePhone ||
+        !ticketNumber ||
+        typeof event.data.amount !== "number"
+      ) {
+        return res.status(400).json({ ok: false, error: "Incomplete event ticket metadata" });
+      }
+
+      const { data: tier, error: tierError } = await adminSupabase
+        .from("event_ticket_tiers")
+        .select("price_kobo, event_id")
+        .eq("id", tierId)
+        .maybeSingle();
+
+      if (tierError) {
+        console.error("[Paystack Webhook] Tier lookup failed:", tierError.message);
+        return res.status(500).json({ ok: false, error: "Ticket tier lookup failed" });
+      }
+
+      if (!tier || String(tier.event_id) !== String(eventId)) {
+        console.warn(
+          "[Paystack Webhook] Event/tier mismatch:",
+          reference,
+          eventId,
+          tier?.event_id || null,
+        );
+        return res.status(400).json({ ok: false, reason: "event_tier_mismatch" });
+      }
+
+      const expectedAmount = Number(tier.price_kobo);
+      if (!Number.isSafeInteger(expectedAmount) || expectedAmount !== event.data.amount) {
+        console.warn(
+          "[Paystack Webhook] Amount mismatch:",
+          reference,
+          "expected:",
+          expectedAmount,
+          "received:",
+          event.data.amount,
+        );
+        return res.status(400).json({ ok: false, reason: "amount_mismatch" });
+      }
+
+      const qrCodeHash = crypto
+        .createHash("sha256")
+        .update(`${reference}:${ticketNumber}`)
+        .digest("hex");
+
+      const { data: ticket, error: ticketError } = await adminSupabase.rpc(
+        "issue_ticket_from_webhook",
+        {
+          p_ticket_number: ticketNumber,
+          p_event_id: eventId,
+          p_tier_id: tierId,
+          p_user_id: userId,
+          p_attendee_name: attendeeName,
+          p_attendee_email: attendeeEmail,
+          p_attendee_phone: attendeePhone,
+          p_price_paid_kobo: event.data.amount,
+          p_paystack_reference: reference,
+          p_qr_code_hash: qrCodeHash,
+        },
+      );
+
+      if (ticketError) {
+        const errorText = `${ticketError.code || ""} ${ticketError.message || ""}`;
+        if (/duplicate_reference|already_processed/i.test(errorText)) {
+          console.warn("[Paystack Webhook] Reference already processed:", reference);
+          return res.status(200).json({ ok: true });
+        }
+
+        console.error("[Paystack Webhook] Ticket issuance failed:", ticketError.message);
+        return res.status(500).json({ ok: false, error: "Ticket issuance failed" });
+      }
+
+      const ticketRecord = Array.isArray(ticket) ? ticket[0] : ticket;
+      return res.status(200).json({ ok: true, ticket_id: ticketRecord?.id || ticketRecord });
+    },
+  );
+
   app.use(express.json());
+
+  // Development-only Paystack webhook simulator. Never register in production.
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/dev/simulate-webhook", async (req, res) => {
+      const { amount, event_id: eventId, tier_id: tierId, user_id: userId } = req.body || {};
+
+      if (
+        typeof amount !== "number" ||
+        !Number.isSafeInteger(amount) ||
+        !eventId ||
+        !tierId ||
+        !userId
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: "amount, event_id, tier_id, and user_id are required",
+        });
+      }
+
+      const timestamp = Date.now();
+      const event = {
+        event: "charge.success",
+        data: {
+          reference: `TEST_${timestamp}`,
+          amount,
+          metadata: {
+            type: "event_ticket",
+            event_id: eventId,
+            tier_id: tierId,
+            user_id: userId,
+            attendee_name: "Test User",
+            attendee_email: "test@test.com",
+            attendee_phone: "+2348000000000",
+            ticket_number: `TEST-${timestamp}`,
+          },
+        },
+      };
+      const rawBody = JSON.stringify(event);
+      const secret = cleanSecret(process.env.PAYSTACK_SECRET_KEY);
+
+      if (!secret) {
+        return res.status(500).json({ ok: false, error: "PAYSTACK_SECRET_KEY is not configured" });
+      }
+
+      const signature = crypto.createHmac("sha512", secret).update(rawBody).digest("hex");
+      const webhookResponse = await fetch(`http://127.0.0.1:${PORT}/api/paystack-webhook`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-paystack-signature": signature,
+        },
+        body: rawBody,
+      });
+      const responseBody = await webhookResponse.text();
+
+      res.status(webhookResponse.status);
+      const contentType = webhookResponse.headers.get("content-type");
+      if (contentType) res.setHeader("content-type", contentType);
+      return res.send(responseBody);
+    });
+  }
 
   // Serve PWA assets directly to prevent any redirect issues (essential for service workers)
   app.get("/sw.js", (req, res) => {
@@ -5674,8 +5886,8 @@ export async function startServer() {
     }
   });
 
-  // Paystack Webhook
-  app.post("/api/paystack-webhook", async (req, res) => {
+  // Legacy book and premium payment handler retained for compatibility.
+  app.post("/api/paystack-webhook-legacy", async (req, res) => {
     const event = req.body;
     console.log(
       `[Paystack Webhook] Received event: ${event.event}`,
