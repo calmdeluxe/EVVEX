@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: calmreader
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: SUPABASE_URL
+        sync: false
+        placeholder: "Your Supabase project URL"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+        placeholder: "Your Supabase service role key (Required for administrative actions)"
+      - key: VITE_SUPABASE_URL
+        sync: false
+        placeholder: "Same as SUPABASE_URL for client-side authentication"
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+        placeholder: "Your Supabase anonymous key"
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+        placeholder: "Paystack private key (Optional)"
+      - key: BREVO_API_KEY
+        sync: false
+        placeholder: "Brevo transactional email mailer API key (Optional)"
+      - key: BREVO_SENDER
+        sync: false
+        placeholder: "sender@example.com (Sender email address)"

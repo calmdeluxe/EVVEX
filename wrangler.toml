@@ -1,0 +1,9 @@
+name = "calmreader1"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-06-26"
+compatibility_flags = [ "nodejs_compat" ]
+
+[vars]
+VITE_SUPABASE_URL = "https://wgdcroglmhzmrvqrixku.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZGNyb2dsbWh6bXJ2cXJpeGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTMxMjIsImV4cCI6MjA5MTc2OTEyMn0.zmWG2K3OpU25wSDBOSmKnpFHUABNtRklAzCg-f5VYic"
+VITE_API_BASE_URL = "https://calmreader1.pages.dev"

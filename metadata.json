@@ -1,0 +1,6 @@
+{
+  "name": "EVVEX",
+  "description": "EVVEX is Nigeria's premier live event discovery, VIP ticketing, gate scanning, and host management platform.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
