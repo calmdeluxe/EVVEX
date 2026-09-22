@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { getAppUrl } from '../lib/utils';
-import { getValidRedirect, clearStoredRedirectIntent } from '../lib/authUtils';
+import { getValidRedirect, clearStoredRedirectIntent, isPlatformAdminEmail } from '../lib/authUtils';
 import { sendVerificationEmail } from '../services/emailService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -952,7 +952,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
                 </div>
                 {error.includes('Verification Required') && (
                   <div className="flex flex-col gap-2 mt-1 border-t border-white/5 pt-2">
-                    {email.trim().toLowerCase() === 'samuelchukwuemeke05@gmail.com' && (
+                    {isPlatformAdminEmail(email.trim()) && (
                       <div className="bg-[#EAB308]/5 p-2 rounded text-[10px] text-[#EAB308] border border-[#EAB308]/20">
                         <strong>Admin Dev Tip:</strong> To skip confirm during development, go to your 
                         <a href="https://supabase.com/dashboard/project/_/auth/providers" target="_blank" rel="noopener noreferrer" className="underline mx-1 font-bold">Supabase Dashboard</a> 

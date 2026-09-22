@@ -1,13 +1,14 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { canAccessMpr } from '../lib/authorization';
 
 interface MPRRouteProps {
   children: React.ReactNode;
 }
 
 export const MPRRoute: React.FC<MPRRouteProps> = ({ children }) => {
-  const { user, profile, accountTier, isAdmin, loading } = useAuth();
+  const { user, profile, accountTier, isAdmin, isMpr: contextIsMpr, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -28,13 +29,15 @@ export const MPRRoute: React.FC<MPRRouteProps> = ({ children }) => {
   // Strict role check: Only allow MPR / marketing partner accounts or admins
   const effectiveTier = (user as any)?.account_tier || profile?.account_tier || accountTier;
   const effectiveRole = (user as any)?.role || profile?.role;
-  const isMpr = 
+  const isAuthorizedMpr = 
     isAdmin ||
+    contextIsMpr ||
     effectiveTier === 'mpr' ||
     effectiveTier === 'marketing_partner' ||
-    effectiveRole === 'marketing_partner';
+    effectiveRole === 'marketing_partner' ||
+    canAccessMpr({ ...(profile || {}), email: user?.email, is_admin: isAdmin });
 
-  if (!isMpr) {
+  if (!isAuthorizedMpr) {
     return <Navigate to="/dashboard" replace />;
   }
 

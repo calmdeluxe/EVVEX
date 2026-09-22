@@ -123,6 +123,9 @@ export function resolveEvexUserContext(profileOrUser: any): ResolvedEvexUserCont
   const isVip = entitlements.includes('VIP_PREMIUM');
   const isAdmin = platformRole === 'ADMIN';
   const isMpr = platformRole === 'MPR' || isAdmin;
+  const isEventCreator = accountType === 'EVENT_CREATOR';
+  const isPatron = accountType === 'PATRON';
+  const isVendor = accountType === 'VENDOR';
   
   const rawTier = (profileOrUser?.account_tier || profileOrUser?.accountTier || 'free') as LegacyAccountTier;
 
@@ -134,6 +137,9 @@ export function resolveEvexUserContext(profileOrUser: any): ResolvedEvexUserCont
     isVip,
     isAdmin,
     isMpr,
+    isEventCreator,
+    isPatron,
+    isVendor,
     legacyTier: rawTier
   };
 }

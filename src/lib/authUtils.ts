@@ -1,6 +1,8 @@
 import { isPlatformAdminEmail, resolveEvexAccountType, resolveEvexPlatformRole, resolveEvexEntitlements, resolveEvexUserContext } from './accountMapping';
+import { isPlatformAdmin, isEventCreator, isVip } from './authorization';
 
 export * from './accountMapping';
+export * from './authorization';
 
 export interface UserProfileSummary {
   id?: string;
@@ -27,12 +29,9 @@ export const getValidRedirect = (
   const path = requestedPath.trim();
   const lowerPath = path.toLowerCase();
 
-  const userEmail = user?.email?.toLowerCase() || '';
-  const isAdminEmail = isPlatformAdminEmail(userEmail);
-  const tier = user?.accountTier || user?.account_tier || 'free';
-  const isAdmin = isAdminEmail || tier === 'admin' || user?.is_admin === true;
-  const isAuthor = isAdmin || tier === 'author';
-  const isPremium = isAdmin || isAuthor || tier === 'premium' || user?.is_premium === true;
+  const isAdmin = isPlatformAdmin(user);
+  const isAuthor = isAdmin || isEventCreator(user);
+  const isPremium = isAdmin || isAuthor || isVip(user) || user?.accountTier === 'premium' || user?.account_tier === 'premium';
 
   // If the requested path is admin-only and user is not admin
   if (lowerPath.startsWith('/admin') && !isAdmin) {

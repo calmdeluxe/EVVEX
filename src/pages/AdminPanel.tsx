@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
+import { canAccessAdmin, isPlatformAdminEmail } from '../lib/authorization';
 import { AdminLayout } from '../components/AdminLayout';
 import { AdminConfirmModal } from '../components/AdminConfirmModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -65,7 +66,7 @@ import { AdminEmailLogsSection } from '../components/admin/AdminEmailLogsSection
 import { AdminMprMonitoring } from '../components/AdminMprMonitoring';
 
 export const AdminPanel: React.FC = () => {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const activeTab = location.hash.replace('#', '') || 'dashboard';
@@ -1424,7 +1425,9 @@ export const AdminPanel: React.FC = () => {
     );
   }
 
-  if (!isAdmin) {
+  const isAuthorized = isAdmin || canAccessAdmin({ ...(profile || {}), email: user?.email, is_admin: isAdmin });
+
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
         <div className="bg-white p-12 rounded-[2.5rem] shadow-xl max-w-md border border-slate-100 flex flex-col items-center">
@@ -1433,8 +1436,7 @@ export const AdminPanel: React.FC = () => {
           </div>
           <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight uppercase italic">Access Denied</h2>
           <p className="text-slate-500 font-medium mb-8 leading-relaxed">
-            You do not have administrative privileges to access this area. 
-            Authorized Admin emails: samuelchukwuemeke05@gmail.com, chukwuemekedaniella@gmail.com
+            You do not have administrative privileges to access this area.
           </p>
           <div className="flex flex-col gap-3 w-full">
             <Button onClick={() => navigate('/dashboard')} className="bg-green-700 hover:bg-green-800 text-white font-bold h-14 rounded-2xl w-full shadow-lg">
@@ -2139,12 +2141,12 @@ export const AdminPanel: React.FC = () => {
                         if (userCohortFilter === 'premium') return u.is_premium || u.account_tier === 'premium';
                         if (userCohortFilter === 'authors') return u.account_tier === 'author' || u.is_approved_author;
                         if (userCohortFilter === 'marketing_partner') return u.account_tier === 'marketing_partner' || u.role === 'marketing_partner';
-                        if (userCohortFilter === 'admins') return u.is_admin || u.email === 'samuelchukwuemeke05@gmail.com' || u.email === 'chukwuemekedaniella@gmail.com' || u.account_tier === 'admin';
+                        if (userCohortFilter === 'admins') return u.is_admin || isPlatformAdminEmail(u.email) || u.account_tier === 'admin';
                         if (userCohortFilter === 'suspended') return u.is_suspended;
                         return true;
                       })
                       .map(u => {
-                        const isProtectedAdmin = u.is_admin || u.account_tier === 'admin' || u.email === 'samuelchukwuemeke05@gmail.com' || u.email === 'chukwuemekedaniella@gmail.com';
+                        const isProtectedAdmin = u.is_admin || u.account_tier === 'admin' || isPlatformAdminEmail(u.email);
 
                         return (
                       <tr key={u.id} className="hover:bg-slate-50/20 transition-colors">
@@ -4875,8 +4877,8 @@ export const AdminPanel: React.FC = () => {
 
               <div className="p-8 bg-slate-50 border-t flex justify-end gap-4">
                  <Button 
-                   disabled={selectedUserActivity.profile.email === 'samuelchukwuemeke05@gmail.com' || selectedUserActivity.profile.email === 'chukwuemekedaniella@gmail.com'}
-                    onClick={() => selectedUserActivity.profile.email !== 'samuelchukwuemeke05@gmail.com' && selectedUserActivity.profile.email !== 'chukwuemekedaniella@gmail.com' && requestUserSuspend(selectedUserActivity.profile, !selectedUserActivity.profile.is_suspended)}
+                   disabled={isPlatformAdminEmail(selectedUserActivity.profile.email)}
+                    onClick={() => !isPlatformAdminEmail(selectedUserActivity.profile.email) && requestUserSuspend(selectedUserActivity.profile, !selectedUserActivity.profile.is_suspended)}
                    className={`disabled:hidden ${selectedUserActivity.profile.is_suspended ? 'bg-emerald-600' : 'bg-red-600'} hover:opacity-90 text-white font-black rounded-2xl h-12 px-8 flex gap-2`}
                  >
                     <AlertTriangle className="w-4 h-4" /> {selectedUserActivity.profile.is_suspended ? 'Reactivate ID' : 'Suspend ID'}

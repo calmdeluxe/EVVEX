@@ -456,7 +456,6 @@ export const LandingPage: React.FC = () => {
     } else {
       // Role checks for restricted areas
       if (targetPath === '/anonymous') {
-         const isAdmin = user?.email?.toLowerCase() === 'samuelchukwuemeke05@gmail.com' || user?.email?.toLowerCase() === 'chukwuemekedaniella@gmail.com';
          if (!isAdmin && profile?.account_tier === 'free') {
             navigate('/upgrade/premium', { 
               state: { 

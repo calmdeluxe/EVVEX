@@ -67,6 +67,35 @@ export interface ResolvedEvexUserContext {
   isAdmin: boolean;
   /** Convenience flag: Is Marketing Partner (MPR) */
   isMpr: boolean;
+  /** Convenience flag: Is Event Creator */
+  isEventCreator: boolean;
+  /** Convenience flag: Is Patron */
+  isPatron: boolean;
+  /** Convenience flag: Is Vendor */
+  isVendor: boolean;
   /** Preserved legacy CalmReader tier for backwards compatibility */
   legacyTier: LegacyAccountTier;
 }
+
+/**
+ * Event-Specific Permission Context:
+ * Contextual access rules scoped strictly to a single event record.
+ * These do NOT grant global platform authority.
+ */
+export interface EvexEventPermissionContext {
+  eventId: string;
+  eventHostId?: string;
+  staffRole?: EvexEventAccessRole;
+}
+
+/**
+ * High-level centralized authorization capabilities evaluation.
+ */
+export interface EvexUserAuthorization {
+  canAccessAdmin: boolean;
+  canAccessMpr: boolean;
+  canCreateEvents: boolean;
+  canManageEvent: (event?: { id?: string; user_id?: string; creator_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
+  canScanEventTickets: (event?: { id?: string; user_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
+}
+

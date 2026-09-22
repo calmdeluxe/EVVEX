@@ -5,7 +5,7 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate, Link, useNavigate }
 import { AuthProvider, useAuth } from './AuthContext';
 import { CapacitorProvider } from './components/CapacitorProvider';
 import { supabase, supabaseConfigStatus } from './supabase';
-import { clearStoredRedirectIntent } from './lib/authUtils';
+import { clearStoredRedirectIntent, isPlatformAdminEmail, isMpr } from './lib/authUtils';
 import { AuthPage } from './pages/AuthPage';
 import { Dashboard } from './pages/Dashboard';
 import { CreateBook } from './pages/CreateBook';
@@ -58,6 +58,10 @@ import { AdminMprAnalytics } from './pages/AdminMprAnalytics';
 import { AdminMprAudit } from './pages/AdminMprAudit';
 import { MprDashboard } from './pages/MprDashboard';
 import { MPRRoute } from './components/MPRRoute';
+import { PrivateRoute } from './components/PrivateRoute';
+import { AdminRoute } from './components/AdminRoute';
+import { CreatorRoute } from './components/CreatorRoute';
+import { VendorRoute } from './components/VendorRoute';
 import { EbookPage } from './pages/EbookPage';
 import { AuthorAnalytics } from './pages/AuthorAnalytics';
 import { TriviaSharedPage } from './pages/TriviaSharedPage';
@@ -79,97 +83,14 @@ const AppRouter: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return isFileProtocol ? <HashRouter>{children}</HashRouter> : <BrowserRouter>{children}</BrowserRouter>;
 };
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, profile, isAdmin } = useAuth();
-  
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700"></div></div>;
-  
-  if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`} />;
-  
-  if (profile?.is_suspended && !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 text-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md">
-          <h2 className="text-2xl font-bold text-red-600">Account Suspended</h2>
-          <p className="text-gray-500 mt-2">Your account has been suspended by an administrator. Please contact support.</p>
-          <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="mt-6 text-green-700 font-bold">Back to Login</button>
-        </div>
-      </div>
-    );
-  }
-  
-  return <>{children}</>;
-};
-
-const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAdmin, loading, user } = useAuth();
-  if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
-      <p className="text-gray-500">Verifying Admin Access...</p>
-      <button onClick={() => window.location.href = '/dashboard'} className="text-sm text-green-700 underline">Back to Dashboard</button>
-    </div>
-  );
-  
-  const isAuthorizedAdmin = isAdmin || user?.email === 'samuelchukwuemeke05@gmail.com' || user?.email === 'chukwuemekedaniella@gmail.com' || user?.email === 'winbigonly@gmail.com';
-
-  if (!isAuthorizedAdmin) {
-    clearStoredRedirectIntent();
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
-const AdminOrPartnerRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAdmin, accountTier, profile, loading } = useAuth();
-  if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
-      <p className="text-gray-500">Verifying Access...</p>
-      <button onClick={() => window.location.href = '/dashboard'} className="text-sm text-green-700 underline">Back to Dashboard</button>
-    </div>
-  );
-  
-  const isPartner = (accountTier as string) === 'marketing_partner' || profile?.account_tier === 'marketing_partner' || profile?.role === 'marketing_partner';
-
-  if (!isAdmin && !isPartner) {
-    clearStoredRedirectIntent();
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <>{children}</>;
-};
+// EVEX Architecture Aliases
+const AuthorRoute = CreatorRoute;
+const AdminOrPartnerRoute = AdminRoute;
 
 const HomeRedirect: React.FC = () => {
   const { user, loading } = useAuth();
   if (loading) return null;
   return <Navigate to={user ? "/dashboard" : "/"} replace />;
-};
-
-const AuthorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { accountTier, isAdmin, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700"></div></div>;
-  
-  const isAuthor = isAdmin || accountTier === 'author';
-  
-  if (!isAuthor) {
-    clearStoredRedirectIntent();
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 text-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md">
-          <h2 className="text-2xl font-bold text-amber-600">Author Access Required</h2>
-          <p className="text-gray-500 mt-2">To create and publish eBooks, you need to upgrade to a Premium Author account for a one-time fee of ₦5,000.</p>
-          <div className="flex flex-col gap-3 mt-6">
-            <Link to="/apply/author" className="bg-green-700 text-white px-6 py-2 rounded-lg font-bold text-center">Upgrade to Author</Link>
-            <Link to="/dashboard" className="text-gray-500 underline text-sm">Back to Dashboard</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  return <>{children}</>;
 };
 
 interface ErrorBoundaryProps {
@@ -379,14 +300,14 @@ const AppContent = () => {
           <Route path="/payment" element={<PrivateRoute><PublicPurchase /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/dashboard/:tab" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/create-book" element={<PrivateRoute><AuthorRoute><CreateBook /></AuthorRoute></PrivateRoute>} />
+          <Route path="/create-book" element={<CreatorRoute><CreateBook /></CreatorRoute>} />
           <Route path="/read/:id" element={<PrivateRoute><ReadBook /></PrivateRoute>} />
           <Route path="/book/:id/preview" element={<PrivateRoute><ReadBook /></PrivateRoute>} />
           <Route path="/redeem" element={<RedeemToken />} />
-          <Route path="/edit/:id" element={<PrivateRoute><AuthorRoute><CreateBook /></AuthorRoute></PrivateRoute>} />
+          <Route path="/edit/:id" element={<CreatorRoute><CreateBook /></CreatorRoute>} />
           <Route path="/promo-studio" element={<PrivateRoute><PromoStudio /></PrivateRoute>} />
-          <Route path="/sell/:id" element={<PrivateRoute><AuthorRoute><SellBook /></AuthorRoute></PrivateRoute>} />
-          <Route path="/my-books" element={<PrivateRoute><AuthorRoute><MyBooks /></AuthorRoute></PrivateRoute>} />
+          <Route path="/sell/:id" element={<CreatorRoute><SellBook /></CreatorRoute>} />
+          <Route path="/my-books" element={<CreatorRoute><MyBooks /></CreatorRoute>} />
           <Route path="/analytics" element={<PrivateRoute><AuthorAnalytics /></PrivateRoute>} />
           <Route path="/earnings" element={<PrivateRoute><Earnings /></PrivateRoute>} />
           <Route path="/mpr" element={<MPRRoute><MprDashboard /></MPRRoute>} />
@@ -394,44 +315,51 @@ const AppContent = () => {
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="/security" element={<PrivateRoute><Security /></PrivateRoute>} />
+
+          {/* EVEX Account-Type Architectural Aliases */}
+          <Route path="/signin" element={<Navigate to="/login" replace />} />
+          <Route path="/creator" element={<Navigate to="/my-books" replace />} />
+          <Route path="/creator/*" element={<CreatorRoute><MyBooks /></CreatorRoute>} />
+          <Route path="/vendor" element={<VendorRoute><Dashboard /></VendorRoute>} />
+          <Route path="/vendor/*" element={<VendorRoute><Dashboard /></VendorRoute>} />
           
           {/* Trivia Routes */}
           <Route path="/trivia" element={<PrivateRoute><TriviaHub /></PrivateRoute>} />
           <Route path="/trivia/ebook/:id" element={<PrivateRoute><TriviaPlayer /></PrivateRoute>} />
           <Route path="/trivia/:id" element={<PrivateRoute><TriviaPlayer /></PrivateRoute>} />
           <Route path="/trivia/share/:id" element={<TriviaSharedPage />} />
-          <Route path="/admin/trivia" element={<PrivateRoute><AdminRoute><TriviaAdmin /></AdminRoute></PrivateRoute>} />
+          <Route path="/admin/trivia" element={<AdminRoute><TriviaAdmin /></AdminRoute>} />
           
           <Route path="/ai-magic" element={<PrivateRoute><AiMagic /></PrivateRoute>} />
           <Route path="/request" element={<PrivateRoute><RequestPage /></PrivateRoute>} />
           <Route path="/setup" element={
             (supabaseConfigStatus.isPlaceholder || supabaseConfigStatus.urlError || supabaseConfigStatus.keyError)
               ? <Setup />
-              : <PrivateRoute><AdminRoute><Setup /></AdminRoute></PrivateRoute>
+              : <AdminRoute><Setup /></AdminRoute>
           } />
           <Route path="/history" element={<PrivateRoute><SupportHistory /></PrivateRoute>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<PrivateRoute><AdminOrPartnerRoute><AdminPanel /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/analytics" element={<PrivateRoute><AdminOrPartnerRoute><AdminAnalytics /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/announcements" element={<PrivateRoute><AdminOrPartnerRoute><AdminAnnouncements /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/activity-log" element={<PrivateRoute><AdminOrPartnerRoute><AdminActivityLog /></AdminOrPartnerRoute></PrivateRoute>} />
+          {/* Admin Routes — Strictly Guarded by Platform Admin Engine */}
+          <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+          <Route path="/admin/announcements" element={<AdminRoute><AdminAnnouncements /></AdminRoute>} />
+          <Route path="/admin/activity-log" element={<AdminRoute><AdminActivityLog /></AdminRoute>} />
           <Route path="/admin/users" element={<Navigate to="/admin#users" replace />} />
-          <Route path="/admin/users/:id" element={<PrivateRoute><AdminOrPartnerRoute><UserProfile /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/user-profile/:id" element={<PrivateRoute><AdminOrPartnerRoute><UserProfile /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/system-health" element={<PrivateRoute><AdminOrPartnerRoute><SystemHealth /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/requests" element={<PrivateRoute><AdminOrPartnerRoute><AdminSupport /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/requests/history" element={<PrivateRoute><AdminOrPartnerRoute><AdminSupportHistory /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/payments" element={<PrivateRoute><AdminRoute><AdminPayments /></AdminRoute></PrivateRoute>} />
-          <Route path="/admin/payment-verifications" element={<PrivateRoute><AdminRoute><AdminPaymentVerifications /></AdminRoute></PrivateRoute>} />
-          <Route path="/admin/payments/history" element={<PrivateRoute><AdminRoute><AdminPaymentHistory /></AdminRoute></PrivateRoute>} />
-          <Route path="/admin/confessions" element={<PrivateRoute><AdminOrPartnerRoute><AdminConfessions /></AdminOrPartnerRoute></PrivateRoute>} />
-          <Route path="/admin/content-unlock" element={<PrivateRoute><AdminRoute><AdminContentUnlock /></AdminRoute></PrivateRoute>} />
-          <Route path="/admin/reviews" element={<PrivateRoute><AdminRoute><AdminReviews /></AdminRoute></PrivateRoute>} />
-          <Route path="/admin/mpr-hub" element={<PrivateRoute><AdminRoute><AdminMprHub /></AdminRoute></PrivateRoute>} />
-          <Route path="/admin/mpr-analytics" element={<PrivateRoute><AdminRoute><AdminMprAnalytics /></AdminRoute></PrivateRoute>} />
+          <Route path="/admin/users/:id" element={<AdminRoute><UserProfile /></AdminRoute>} />
+          <Route path="/admin/user-profile/:id" element={<AdminRoute><UserProfile /></AdminRoute>} />
+          <Route path="/admin/system-health" element={<AdminRoute><SystemHealth /></AdminRoute>} />
+          <Route path="/admin/requests" element={<AdminRoute><AdminSupport /></AdminRoute>} />
+          <Route path="/admin/requests/history" element={<AdminRoute><AdminSupportHistory /></AdminRoute>} />
+          <Route path="/admin/payments" element={<AdminRoute><AdminPayments /></AdminRoute>} />
+          <Route path="/admin/payment-verifications" element={<AdminRoute><AdminPaymentVerifications /></AdminRoute>} />
+          <Route path="/admin/payments/history" element={<AdminRoute><AdminPaymentHistory /></AdminRoute>} />
+          <Route path="/admin/confessions" element={<AdminRoute><AdminConfessions /></AdminRoute>} />
+          <Route path="/admin/content-unlock" element={<AdminRoute><AdminContentUnlock /></AdminRoute>} />
+          <Route path="/admin/reviews" element={<AdminRoute><AdminReviews /></AdminRoute>} />
+          <Route path="/admin/mpr-hub" element={<AdminRoute><AdminMprHub /></AdminRoute>} />
+          <Route path="/admin/mpr-analytics" element={<AdminRoute><AdminMprAnalytics /></AdminRoute>} />
           <Route path="/admin/mpr/analytics" element={<Navigate to="/admin/mpr-analytics" replace />} />
-          <Route path="/admin/mpr-audit" element={<PrivateRoute><AdminRoute><AdminMprAudit /></AdminRoute></PrivateRoute>} />
+          <Route path="/admin/mpr-audit" element={<AdminRoute><AdminMprAudit /></AdminRoute>} />
           <Route path="/admin/mpr/audit" element={<Navigate to="/admin/mpr-audit" replace />} />
           <Route path="/admin/audit-trail" element={<Navigate to="/admin/mpr-audit" replace />} />
           <Route path="/admin/mpr" element={<Navigate to="/admin/mpr-hub" replace />} />

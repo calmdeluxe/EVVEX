@@ -4,8 +4,9 @@ import { User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigStatus } from './supabase';
 import { verifyBooksSchema } from './lib/schemaGuard';
 import { clearStoredRedirectIntent } from './lib/authUtils';
-import { EvexAccountType, EvexPlatformRole } from './types/account';
-import { resolveEvexUserContext } from './lib/accountMapping';
+import { EvexAccountType, EvexPlatformRole, EvexEventAccessRole } from './types/account';
+import { resolveEvexUserContext, isPlatformAdminEmail } from './lib/accountMapping';
+import { isPlatformAdmin, isMpr as checkIsMpr, canManageEvent as checkCanManageEvent, canScanEventTickets as checkCanScanEventTickets } from './lib/authorization';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,16 @@ interface AuthContextType {
   isVip: boolean;
   /** Entitlement: Marketing Partner / MPR */
   isMpr: boolean;
+  /** Identity Persona: Event Creator */
+  isEventCreator: boolean;
+  /** Identity Persona: Patron */
+  isPatron: boolean;
+  /** Identity Persona: Vendor */
+  isVendor: boolean;
+  /** Contextual event management permission */
+  canManageEvent: (event?: { id?: string; user_id?: string; creator_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
+  /** Contextual ticket scanning permission */
+  canScanEventTickets: (event?: { id?: string; user_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
   isAuthReady: boolean;
   schemaProblems: string[];
   recursionDetected: boolean;
@@ -40,6 +51,11 @@ const AuthContext = createContext<AuthContextType>({
   evexPlatformRole: 'NONE',
   isVip: false,
   isMpr: false,
+  isEventCreator: false,
+  isPatron: true,
+  isVendor: false,
+  canManageEvent: () => false,
+  canScanEventTickets: () => false,
   isAuthReady: false,
   schemaProblems: [],
   recursionDetected: false,
@@ -333,8 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: session } = await supabase.auth.getSession();
       const currentUser = session.session?.user;
       if (currentUser) {
-        const lowerEmail = (currentUser.email || '').toLowerCase();
-        const isAdminEmail = lowerEmail === 'samuelchukwuemeke05@gmail.com' || lowerEmail === 'chukwuemekedaniella@gmail.com' || lowerEmail === 'winbigonly@gmail.com';
+        const isAdminEmail = isPlatformAdminEmail(currentUser.email);
         if (isAdminEmail) {
           if (!profileData || profileData.is_admin !== true || profileData.account_tier !== 'admin' || profileData.app_role !== 'admin') {
             console.log("[AuthContext] Admin profile missing or needs update in DB, performing insert/upsert...");
@@ -374,8 +389,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: session } = await supabase.auth.getSession();
         const curUser = session.session?.user;
         const fallbackEmail = curUser?.email || '';
-        const lowerFallback = fallbackEmail.toLowerCase();
-        const isAdminEmail = lowerFallback === 'samuelchukwuemeke05@gmail.com' || lowerFallback === 'chukwuemekedaniella@gmail.com' || lowerFallback === 'winbigonly@gmail.com';
+        const isAdminEmail = isPlatformAdminEmail(fallbackEmail);
         
         const fallbackProfile = {
           id: userId,
@@ -402,8 +416,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: session } = await supabase.auth.getSession();
         const curUser = session.session?.user;
         const fallbackEmail = curUser?.email || '';
-        const lowerFallback = fallbackEmail.toLowerCase();
-        const isAdminEmail = lowerFallback === 'samuelchukwuemeke05@gmail.com' || lowerFallback === 'chukwuemekedaniella@gmail.com' || lowerFallback === 'winbigonly@gmail.com';
+        const isAdminEmail = isPlatformAdminEmail(fallbackEmail);
         
         const fallbackProfile = {
           id: userId,
@@ -529,15 +542,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ⚠️ CRITICAL SECURITY: ADMIN ACCESS LIST
-  const ADMIN_EMAILS = [
-    'samuelchukwuemeke05@gmail.com',
-    'chukwuemekedaniella@gmail.com',
-    'winbigonly@gmail.com'
-  ];
-  
+  // ⚠️ CRITICAL SECURITY: ADMIN VERIFICATION VIA CENTRALIZED MAPPING
   const isAdmin = !!(
-    (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) ||
+    isPlatformAdminEmail(user?.email) ||
     profile?.is_admin === true ||
     profile?.app_role === 'admin' ||
     profile?.account_tier === 'admin'
@@ -560,6 +567,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const evexPlatformRole = isAdmin ? 'ADMIN' : resolved.platformRole;
   const isVip = resolved.isVip;
   const isMpr = isAdmin || evexPlatformRole === 'MPR' || accountTier === 'marketing_partner' || accountTier === 'mpr';
+  const isEventCreator = resolved.isEventCreator;
+  const isPatron = resolved.isPatron;
+  const isVendor = resolved.isVendor;
+
+  const canManageEvent = (event?: { id?: string; user_id?: string; creator_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => {
+    return checkCanManageEvent({ ...(profile || {}), id: user?.id, email: user?.email, is_admin: isAdmin }, event, staffRole);
+  };
+
+  const canScanEventTickets = (event?: { id?: string; user_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => {
+    return checkCanScanEventTickets({ ...(profile || {}), id: user?.id, email: user?.email, is_admin: isAdmin }, event, staffRole);
+  };
 
   return (
     <AuthContext.Provider value={{ 
@@ -572,6 +590,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       evexPlatformRole,
       isVip,
       isMpr,
+      isEventCreator,
+      isPatron,
+      isVendor,
+      canManageEvent,
+      canScanEventTickets,
       isAuthReady, 
       schemaProblems, 
       recursionDetected, 

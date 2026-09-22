@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
+import { canAccessAdmin, isPlatformAdminEmail } from '../lib/authorization';
 import { 
   User, 
   Mail, 
@@ -49,27 +50,22 @@ export const UserProfile: React.FC = () => {
     inputText: '',
   });
 
-  const isMarketingPartner = profile?.account_tier === 'marketing_partner' || profile?.role === 'marketing_partner';
-
-  const ADMIN_EMAILS = [
-    'samuelchukwuemeke05@gmail.com',
-    'chukwuemekedaniella@gmail.com'
-  ];
+  const isAuthorized = isAdmin || canAccessAdmin({ ...(profile || {}), is_admin: isAdmin });
 
   useEffect(() => {
     if (isAuthReady) {
-      if (!isAdmin && !isMarketingPartner) {
+      if (!isAuthorized) {
         navigate('/dashboard');
       } else if (id) {
         fetchUserProfile(id);
       }
     }
-  }, [isAuthReady, isAdmin, isMarketingPartner, id, navigate]);
+  }, [isAuthReady, isAuthorized, id, navigate]);
 
   const isUserProtected = (u: any) => {
     if (!u) return false;
     const email = u.email?.toLowerCase();
-    return u.is_admin || u.account_tier === 'admin' || ADMIN_EMAILS.includes(email);
+    return u.is_admin || u.account_tier === 'admin' || isPlatformAdminEmail(email);
   };
 
   const fetchUserProfile = async (userId: string) => {
@@ -194,7 +190,7 @@ export const UserProfile: React.FC = () => {
     }
   };
 
-  if (!isAuthReady || (!isAdmin && !isMarketingPartner)) return null;
+  if (!isAuthReady || !isAuthorized) return null;
 
   const isProtected = isUserProtected(userData);
 

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
+import { canAccessAdmin, isPlatformAdminEmail } from '../lib/authorization';
 import { 
   Users, 
   Search, 
@@ -58,22 +59,17 @@ export const AdminUsers: React.FC = () => {
     inputText: '',
   });
 
-  const isMarketingPartner = profile?.account_tier === 'marketing_partner' || profile?.role === 'marketing_partner';
-
-  const ADMIN_EMAILS = [
-    'samuelchukwuemeke05@gmail.com',
-    'chukwuemekedaniella@gmail.com'
-  ];
+  const isAuthorized = isAdmin || canAccessAdmin({ ...(profile || {}), is_admin: isAdmin });
 
   useEffect(() => {
     if (isAuthReady) {
-      if (!isAdmin && !isMarketingPartner) {
+      if (!isAuthorized) {
         navigate('/dashboard');
       } else {
         fetchUsers();
       }
     }
-  }, [isAuthReady, isAdmin, isMarketingPartner, navigate]);
+  }, [isAuthReady, isAuthorized, navigate]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -104,7 +100,7 @@ export const AdminUsers: React.FC = () => {
 
   const isUserProtected = (u: any) => {
     const email = u.email?.toLowerCase();
-    return u.is_admin || u.account_tier === 'admin' || ADMIN_EMAILS.includes(email);
+    return u.is_admin || u.account_tier === 'admin' || isPlatformAdminEmail(email);
   };
 
   const filteredUsers = users.filter(u => {
@@ -290,7 +286,7 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
-  if (!isAuthReady || (!isAdmin && !isMarketingPartner)) return null;
+  if (!isAuthReady || !isAuthorized) return null;
 
   return (
     <AdminLayout>
@@ -316,11 +312,6 @@ export const AdminUsers: React.FC = () => {
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
             User Directory Management
-            {isMarketingPartner && (
-              <span className="text-xs font-black bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-full uppercase tracking-wider">
-                Marketing Partner
-              </span>
-            )}
           </h1>
           <p className="text-gray-500 font-medium mt-1">Manage user accounts, bulk actions, and tier assignments.</p>
         </div>

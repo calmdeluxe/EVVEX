@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
+import { isPlatformAdminEmail } from '../lib/authorization';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -155,8 +156,8 @@ export const TriviaPlayer: React.FC = () => {
   };
 
   const checkBypass = () => {
-    if (user?.email === 'samuelchukwuemeke05@gmail.com') {
-      return true; // Bypass all checks
+    if (isPlatformAdminEmail(user?.email)) {
+      return true; // Bypass all checks for verified platform administrators
     }
     return false;
   };
