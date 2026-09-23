@@ -197,7 +197,7 @@ export async function onRequest(context) {
               payload.response_format = { type: "json_object" };
             }
 
-            const dynamicReferer = context.request.headers.get("referer") || "https://calmreader1.pages.dev";
+            const dynamicReferer = context.request.headers.get("referer") || "https://evvex-token.pages.dev";
             const isFreeModel = model.endsWith(":free") || model === "openrouter/free";
             const refererToUse = isFreeModel ? "https://calmreader.com" : dynamicReferer;
 

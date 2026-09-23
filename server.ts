@@ -1269,7 +1269,7 @@ export async function startServer() {
             }
 
             const isFreeModel = model.endsWith(":free") || model === "openrouter/free";
-            const refererToUse = isFreeModel ? "https://calmreader.com" : (process.env.APP_URL || "https://calmreader1.pages.dev");
+            const refererToUse = isFreeModel ? "https://calmreader.com" : (process.env.APP_URL || "https://evvex-token.pages.dev");
 
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
@@ -6849,7 +6849,7 @@ export async function startServer() {
     try {
       const supabase = getSupabase();
       const admin = getSupabaseAdmin();
-      const appUrl = process.env.APP_URL || "https://calmreader1.pages.dev";
+      const appUrl = process.env.APP_URL || "https://evvex-token.pages.dev";
 
       // Check phone uniqueness if provided
       if (phoneNumber) {

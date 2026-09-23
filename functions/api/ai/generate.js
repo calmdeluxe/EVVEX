@@ -222,7 +222,7 @@ async function handleGenerate(context) {
     }
 
     // Attempt calling OpenRouter with retries
-    const dynamicReferer = context.request.headers.get("referer") || "https://calmreader1.pages.dev";
+    const dynamicReferer = context.request.headers.get("referer") || "https://evvex-token.pages.dev";
     let textResult = null;
     let fullResponseData = null;
     let lastError = "";

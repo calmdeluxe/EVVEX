@@ -45,7 +45,7 @@ export const AppUpdateChecker: React.FC = () => {
     // Attempt to query the live remote server first to bypass local assets in Capacitor wrapper
     const candidates = [
       "https://calmreader.qzz.io/version.json",
-      "https://calmreader1.pages.dev/version.json",
+      "https://evvex-token.pages.dev/version.json",
       "/version.json"
     ];
 
