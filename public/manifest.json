@@ -1,8 +1,8 @@
 {
-  "id": "/calmreader-app",
-  "name": "CalmReader — Read, Trivia, Earn",
-  "short_name": "CalmReader",
-  "description": "Create, publish, and monetize eBooks",
+  "id": "/evex-app",
+  "name": "EVVEX — Events, Tickets, Marketplace & Content",
+  "short_name": "EVVEX",
+  "description": "EVVEX is Nigeria's premier live event discovery, VIP ticketing, gate scanning, vendor marketplace, and host management platform.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

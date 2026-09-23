@@ -165,23 +165,86 @@ export function isPatron(userOrContext?: any): boolean {
 }
 
 /**
- * Validates whether a user is a Vendor.
+ * Validates whether a user is a Vendor (restructured from Author).
  */
 export function isVendor(userOrContext?: any): boolean {
   if (!userOrContext) return false;
 
   const ctx = getEvexContext(userOrContext);
-  if (!ctx) return false;
-
-  if (ctx.accountType === 'VENDOR' || ctx.isVendor) {
+  if (ctx && (ctx.accountType === 'VENDOR' || ctx.isVendor)) {
     return true;
   }
 
-  const raw = ctx.rawProfile || userOrContext;
+  const raw = ctx?.rawProfile || userOrContext;
   const tier = (raw.account_tier || raw.accountTier || '').toLowerCase();
   const role = (raw.app_role || raw.role || '').toLowerCase();
 
-  return tier === 'vendor' || role === 'vendor';
+  return (
+    tier === 'vendor' || 
+    role === 'vendor' || 
+    tier === 'author' || 
+    raw.is_approved_author === true || 
+    raw.is_author === true
+  );
+}
+
+/**
+ * Validates whether a user can access Trivia.
+ * 
+ * STRICT INVARIANT: Only ADMIN and MPR can access Trivia.
+ * Vendors, Patrons, Event Participants/Staff/Scanners, and VIPs are strictly excluded.
+ */
+export function canAccessTrivia(userOrContext?: any): boolean {
+  if (!userOrContext) return false;
+  return isPlatformAdmin(userOrContext) || isMpr(userOrContext);
+}
+
+/**
+ * Validates whether a user can create events.
+ * 
+ * INVARIANT: Event creation belongs strictly to ADMIN and MPR.
+ * Vendors NEVER create events or tickets.
+ */
+export function canCreateEvents(userOrContext?: any): boolean {
+  if (!userOrContext) return false;
+  return isPlatformAdmin(userOrContext) || isMpr(userOrContext);
+}
+
+/**
+ * Validates whether a user can create tickets.
+ * 
+ * INVARIANT: Ticket creation belongs strictly to ADMIN and MPR.
+ * Vendors NEVER create tickets.
+ */
+export function canCreateTickets(userOrContext?: any): boolean {
+  if (!userOrContext) return false;
+  return isPlatformAdmin(userOrContext) || isMpr(userOrContext);
+}
+
+/**
+ * Validates whether a user can approve events.
+ * Only Platform Administrators can review & approve/reject submitted events.
+ */
+export function canApproveEvents(userOrContext?: any): boolean {
+  if (!userOrContext) return false;
+  return isPlatformAdmin(userOrContext);
+}
+
+/**
+ * Validates whether a user can create vendor products/listings.
+ * Vendors and platform admins with supervisory access can create products.
+ */
+export function canCreateProducts(userOrContext?: any): boolean {
+  if (!userOrContext) return false;
+  return isVendor(userOrContext) || isPlatformAdmin(userOrContext);
+}
+
+/**
+ * Validates whether a user can access the Vendor shop portal.
+ */
+export function canAccessVendorPortal(userOrContext?: any): boolean {
+  if (!userOrContext) return false;
+  return isVendor(userOrContext) || isPlatformAdmin(userOrContext);
 }
 
 /**
@@ -319,7 +382,12 @@ export function evaluateAuthorization(userOrContext: any): EvexUserAuthorization
   return {
     canAccessAdmin: canAccessAdmin(userOrContext),
     canAccessMpr: canAccessMpr(userOrContext),
-    canCreateEvents: isEventCreator(userOrContext) || isPlatformAdmin(userOrContext),
+    canAccessTrivia: canAccessTrivia(userOrContext),
+    canCreateEvents: canCreateEvents(userOrContext),
+    canCreateTickets: canCreateTickets(userOrContext),
+    canApproveEvents: canApproveEvents(userOrContext),
+    canCreateProducts: canCreateProducts(userOrContext),
+    canAccessVendorPortal: canAccessVendorPortal(userOrContext),
     canManageEvent: (event, staffRole) => canManageEvent(userOrContext, event, staffRole),
     canScanEventTickets: (event, staffRole) => canScanEventTickets(userOrContext, event, staffRole)
   };

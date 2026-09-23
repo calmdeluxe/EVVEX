@@ -709,7 +709,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
         <div className="bg-[#EAB308] p-2.5 rounded-2xl shadow-lg shadow-[#EAB308]/20">
           <BookOpen className="w-7 h-7 text-black" />
         </div>
-        <h1 className="text-3xl font-black font-sans tracking-tighter text-white">CalmReader</h1>
+        <h1 className="text-3xl font-black font-sans tracking-tighter text-white">EVVEX</h1>
       </Link>
 
       <Card className="w-full max-w-md bg-[#0c0c14] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] rounded-3xl z-10 overflow-hidden">

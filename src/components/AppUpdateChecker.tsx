@@ -220,13 +220,13 @@ export const AppUpdateChecker: React.FC = () => {
                 New Version Available
               </span>
               <h2 className="text-xl font-black tracking-tight mt-1">
-                Update CalmReader
+                Update EVVEX
               </h2>
             </div>
           </div>
 
           <p className="text-xs text-white/90 leading-relaxed font-medium mt-2">
-            A newer release of CalmReader is ready with the latest platform features and bug fixes.
+            A newer release of EVVEX is ready with the latest platform features and bug fixes.
           </p>
         </div>
 

@@ -19,6 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   BookOpen,
   Plus,
+  Store,
+  Ticket,
   Wallet,
   ArrowUpRight,
   Users,
@@ -62,6 +64,10 @@ export const Dashboard: React.FC = () => {
     user,
     profile,
     isAdmin,
+    isMpr,
+    isVendor,
+    canCreateEvents,
+    canCreateProducts,
     accountTier,
     isAuthReady,
     refreshProfile,
@@ -1004,35 +1010,51 @@ export const Dashboard: React.FC = () => {
                 <ShieldCheck className="w-3.5 h-3.5" /> Become Verified Author
               </Button>
             )}
-            {isAuthor && (
+            {isVendor && !isAdmin && !isMpr && (
               <div className="flex flex-wrap gap-1.5">
                 <Button
-                  onClick={() => navigate("/create-book?type=ebook")}
-                  className="bg-slate-900 hover:bg-black text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
+                  onClick={() => navigate("/create-product")}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> eBook
+                  <Plus className="w-3.5 h-3.5" /> Product
                 </Button>
                 <Button
                   onClick={() => navigate("/create-book?type=blog")}
+                  className="bg-slate-900 hover:bg-black text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Vendor Post
+                </Button>
+              </div>
+            )}
+            {(isAdmin || isMpr) && (
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  onClick={() => navigate("/create-event")}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Blog
+                  <Plus className="w-3.5 h-3.5" /> Event
                 </Button>
                 <Button
-                  onClick={() => navigate("/create-book?type=video")}
-                  className="bg-pink-600 hover:bg-pink-700 text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
+                  onClick={() => navigate("/create-ticket")}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Video
+                  <Plus className="w-3.5 h-3.5" /> Ticket
+                </Button>
+                <Button
+                  onClick={() => navigate("/create-book?type=blog")}
+                  className="bg-slate-900 hover:bg-black text-white font-black rounded-xl h-10 gap-1 shadow-xs text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Blog
                 </Button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Your Ebook Studio & Sidebar Grid */}
+        {/* Your Studio & Sidebar Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Your Ebook Studio */}
+            {/* Your Studio */}
             <Card
               className="bg-white border border-gray-100 shadow-sm rounded-3xl overflow-hidden"
               id="my-books"
@@ -1041,11 +1063,29 @@ export const Dashboard: React.FC = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800">
-                      <BookOpen className="w-4 h-4 text-indigo-700" />
-                      Your Ebook Studio
+                      {isVendor && !isAdmin && !isMpr ? (
+                        <>
+                          <Store className="w-4 h-4 text-emerald-600" />
+                          Vendor Storefront Studio
+                        </>
+                      ) : (isAdmin || isMpr) ? (
+                        <>
+                          <Ticket className="w-4 h-4 text-indigo-700" />
+                          Events & Ticket Studio
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-4 h-4 text-indigo-700" />
+                          Content & Media Studio
+                        </>
+                      )}
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 font-medium font-sans">
-                      Manage and monitor your literary portfolio.
+                      {isVendor && !isAdmin && !isMpr
+                        ? "Manage and monitor your vendor products, storefront listings, and catalog."
+                        : (isAdmin || isMpr)
+                          ? "Manage and monitor your live events, venue schedules, and ticket tiers."
+                          : "Manage and monitor your portfolio and interactive content."}
                     </CardDescription>
                   </div>
 

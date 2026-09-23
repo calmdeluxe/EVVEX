@@ -82,7 +82,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               <div>
                 <h1 className="text-xl font-black text-slate-900 tracking-tight">Something Went Wrong</h1>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  CalmReader encountered an unexpected error.
+                  EVVEX encountered an unexpected error.
                 </p>
               </div>
             </div>

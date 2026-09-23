@@ -36,7 +36,7 @@ import { getAppUrl, getReferralCode } from '../lib/utils';
 import { ShieldAlert } from 'lucide-react';
 
 export const MyBooks: React.FC = () => {
-  const { user, profile, isAdmin, accountTier, isAuthReady } = useAuth();
+  const { user, profile, isAdmin, isMpr, isVendor, canCreateEvents, canCreateProducts, accountTier, isAuthReady } = useAuth();
   const navigate = useNavigate();
 
   const handleShare = (book: any) => {
@@ -44,7 +44,7 @@ export const MyBooks: React.FC = () => {
     const affiliateCode = getReferralCode(user?.id);
     const link = `${getAppUrl()}/ebook/${slugOrId}${affiliateCode ? `?ref=${affiliateCode}` : ''}`;
     navigator.clipboard.writeText(link);
-    alert('Shareable eBook link copied to clipboard!\n' + link);
+    alert('Shareable link copied to clipboard!\n' + link);
   };
 
   // Security Redirect
@@ -139,13 +139,13 @@ export const MyBooks: React.FC = () => {
       }
 
       if (deleted) {
-        alert('eBook deleted successfully!');
+        alert('Item deleted successfully!');
         setBooks(prev => prev.filter(b => String(b.id) !== String(bookToDelete.id)));
         setBookToDelete(null);
         fetchData();
       }
     } catch (err: any) {
-      alert('Error deleting book: ' + (err.response?.data?.error || err.message || 'Failed to delete'));
+      alert('Error deleting item: ' + (err.response?.data?.error || err.message || 'Failed to delete'));
       fetchData();
     } finally {
       setDeletingId(null);
@@ -164,19 +164,38 @@ export const MyBooks: React.FC = () => {
       <div className="space-y-8 pb-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">My Literary Works</h1>
-            <p className="text-slate-500 font-medium">Manage, edit, and track your content performance.</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">
+              {isVendor && !isAdmin && !isMpr ? 'Vendor Storefront & Products' : (isAdmin || isMpr) ? 'Events & Ticket Listings' : 'My Content & Catalog'}
+            </h1>
+            <p className="text-slate-500 font-medium">
+              {isVendor && !isAdmin && !isMpr 
+                ? 'Manage your vendor storefront items, shop listings, and product performance.' 
+                : 'Manage, edit, and track your events, tickets, and content performance.'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
-             <Button onClick={() => navigate('/create-book?type=ebook')} className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
-                <Plus className="w-4 h-4" /> eBook
-             </Button>
-             <Button onClick={() => navigate('/create-book?type=blog')} className="bg-slate-900 hover:bg-black text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
-                <Plus className="w-4 h-4" /> Blog
-             </Button>
-             <Button onClick={() => navigate('/create-book?type=video')} className="bg-pink-600 hover:bg-pink-700 text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
-                <Plus className="w-4 h-4" /> Video
-             </Button>
+            {isVendor && !isAdmin && !isMpr ? (
+              <>
+                <Button onClick={() => navigate('/create-product')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
+                   <Plus className="w-4 h-4" /> Add Product
+                </Button>
+                <Button onClick={() => navigate('/create-book?type=blog')} className="bg-slate-900 hover:bg-black text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
+                   <Plus className="w-4 h-4" /> Vendor Post
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={() => navigate('/create-event')} className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
+                   <Plus className="w-4 h-4" /> Create Event
+                </Button>
+                <Button onClick={() => navigate('/create-ticket')} className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
+                   <Plus className="w-4 h-4" /> Issue Ticket
+                </Button>
+                <Button onClick={() => navigate('/create-book?type=blog')} className="bg-slate-900 hover:bg-black text-white font-black rounded-xl h-11 px-4 gap-1.5 shadow-md">
+                   <Plus className="w-4 h-4" /> Blog
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -194,10 +213,10 @@ export const MyBooks: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-2xl w-full md:w-auto overflow-x-auto">
-            {(['all', 'ebook', 'blog', 'video'] as const).map(type => (
+            {(['all', ...(isVendor && !isAdmin && !isMpr ? ['product', 'blog'] : ['event', 'ticket', 'ebook', 'blog', 'video'])] as const).map(type => (
               <button
                 key={type}
-                onClick={() => setFilterType(type)}
+                onClick={() => setFilterType(type as any)}
                 className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                   filterType === type ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
                 }`}

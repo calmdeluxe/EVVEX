@@ -28,6 +28,18 @@ interface AuthContextType {
   isPatron: boolean;
   /** Identity Persona: Vendor */
   isVendor: boolean;
+  /** Domain Authorization: Can access Trivia (Admin & MPR only) */
+  canAccessTrivia: boolean;
+  /** Domain Authorization: Can create events (Admin & MPR only) */
+  canCreateEvents: boolean;
+  /** Domain Authorization: Can create tickets (Admin & MPR only) */
+  canCreateTickets: boolean;
+  /** Domain Authorization: Can approve events (Admin only) */
+  canApproveEvents: boolean;
+  /** Domain Authorization: Can create vendor products/posts */
+  canCreateProducts: boolean;
+  /** Domain Authorization: Can access vendor shop portal */
+  canAccessVendorPortal: boolean;
   /** Contextual event management permission */
   canManageEvent: (event?: { id?: string; user_id?: string; creator_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
   /** Contextual ticket scanning permission */
@@ -54,6 +66,12 @@ const AuthContext = createContext<AuthContextType>({
   isEventCreator: false,
   isPatron: true,
   isVendor: false,
+  canAccessTrivia: false,
+  canCreateEvents: false,
+  canCreateTickets: false,
+  canApproveEvents: false,
+  canCreateProducts: false,
+  canAccessVendorPortal: false,
   canManageEvent: () => false,
   canScanEventTickets: () => false,
   isAuthReady: false,
@@ -571,6 +589,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isPatron = resolved.isPatron;
   const isVendor = resolved.isVendor;
 
+  // Domain Boundaries
+  const canAccessTrivia = isAdmin || isMpr;
+  const canCreateEvents = isAdmin || isMpr;
+  const canCreateTickets = isAdmin || isMpr;
+  const canApproveEvents = isAdmin;
+  const canCreateProducts = isVendor || isAdmin;
+  const canAccessVendorPortal = isVendor || isAdmin;
+
   const canManageEvent = (event?: { id?: string; user_id?: string; creator_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => {
     return checkCanManageEvent({ ...(profile || {}), id: user?.id, email: user?.email, is_admin: isAdmin }, event, staffRole);
   };
@@ -593,6 +619,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isEventCreator,
       isPatron,
       isVendor,
+      canAccessTrivia,
+      canCreateEvents,
+      canCreateTickets,
+      canApproveEvents,
+      canCreateProducts,
+      canAccessVendorPortal,
       canManageEvent,
       canScanEventTickets,
       isAuthReady, 

@@ -94,7 +94,12 @@ export interface EvexEventPermissionContext {
 export interface EvexUserAuthorization {
   canAccessAdmin: boolean;
   canAccessMpr: boolean;
+  canAccessTrivia: boolean;
   canCreateEvents: boolean;
+  canCreateTickets: boolean;
+  canApproveEvents: boolean;
+  canCreateProducts: boolean;
+  canAccessVendorPortal: boolean;
   canManageEvent: (event?: { id?: string; user_id?: string; creator_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
   canScanEventTickets: (event?: { id?: string; user_id?: string; host_id?: string } | null, staffRole?: EvexEventAccessRole) => boolean;
 }

@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.calmreader.mobile',
-  appName: 'CalmReader',
+  appId: 'com.evex.mobile',
+  appName: 'EVVEX',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

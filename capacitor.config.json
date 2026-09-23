@@ -1,6 +1,6 @@
 {
-  "appId": "com.calmreader.mobile",
-  "appName": "CalmReader",
+  "appId": "com.evex.mobile",
+  "appName": "EVVEX",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",

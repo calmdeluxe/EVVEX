@@ -37,6 +37,10 @@ import {
   DollarSign,
   User,
   ShieldCheck,
+  ShieldAlert,
+  ShoppingBag,
+  Store,
+  Ticket,
   Upload,
   ArrowUp,
   ArrowDown,
@@ -72,13 +76,16 @@ export const AVAILABLE_FONTS = [
 ];
 
 export const CreateBook: React.FC = () => {
-  const { user, profile, isAdmin, accountTier, loading: authLoading, refreshProfile, getOrCreateProfile } = useAuth();
+  const { user, profile, isAdmin, isMpr, isVendor, canCreateEvents, canCreateProducts, accountTier, loading: authLoading, refreshProfile, getOrCreateProfile } = useAuth();
   const navigate = useNavigate();
   const { id: pathId } = useParams<{ id?: string }>();
   const [searchParams] = useSearchParams();
   const id = pathId || searchParams.get('id');
   const [typeState, setTypeState] = useState<string | null>(null);
-  const contentType = typeState || searchParams.get('type') || 'ebook';
+  
+  // Default type: Vendors default to 'product', Admin/MPR default to 'event'
+  const requestedType = typeState || searchParams.get('type');
+  const contentType = requestedType || (isVendor && !isAdmin && !isMpr ? 'product' : 'event');
 
   const [activeStep, setActiveStep] = useState<'content' | 'cards' | 'publish'>('content');
   const [title, setTitle] = useState('');
@@ -348,6 +355,83 @@ export const CreateBook: React.FC = () => {
     } catch (err: any) {
       console.error('Blog Submit Error:', err);
       setError(`Failed to save blog post: ${err.message}`);
+    } finally {
+      setSaving(false);
+      setPublishing(false);
+    }
+  };
+
+  const handleProductSubmit = async (isPublishing = true) => {
+    if (!title.trim()) {
+      setError('Product title is required.');
+      return;
+    }
+    const numPrice = parseInt(price) || 0;
+
+    if (isPublishing) setPublishing(true);
+    else setSaving(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const userProfile = await getOrCreateProfile();
+      let profileId = userProfile?.id || user?.id;
+      if (!profileId) {
+        throw new Error('You must be signed in to save a product.');
+      }
+
+      let assignedUserId = profileId;
+      if (isAdmin && selectedAuthorId) {
+        assignedUserId = selectedAuthorId;
+      } else if (id && bookUserId) {
+        assignedUserId = bookUserId;
+      }
+
+      const { hasPdfPrice, hasCoverImage } = await verifyBooksSchema();
+
+      const productCards = [{
+        title: title.trim(),
+        text: description.trim() || 'Vendor Shop Product',
+        type: 'product_listing'
+      }];
+
+      const rawData = {
+        title: title.trim(),
+        description: description.trim() || 'Vendor Shop Product',
+        cards_json: productCards,
+        book_url: null,
+        price: isFree ? 0 : numPrice,
+        pdf_price: 0,
+        is_published: isPublishing ? 1 : 0, 
+        status: isPublishing ? 1 : 0,
+        public_slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).slice(2, 7) + '-product',
+        cover_image: coverImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=2000',
+        admin_note: `type:product,vendor:${authorName || profile?.full_name || 'Verified Vendor'}${genreId ? `,genre:${genreId}` : ''}`,
+        user_id: assignedUserId,
+        genre_id: genreId || null
+      };
+
+      const bookData = normalizeBookPayload(rawData, { hasPdfPrice, hasCoverImage });
+
+      if (id) {
+        const { error: updateError } = await supabase.from('books').update(bookData).eq('id', id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: saveError } = await supabase.from('books').insert(bookData);
+        if (saveError) throw saveError;
+      }
+
+      if (isPublishing) {
+        setPublished(true);
+        setMessage('Product Published to Vendor Shop Successfully!');
+      } else {
+        setMessage('Product Draft Saved Successfully!');
+      }
+
+      setTimeout(() => navigate('/my-books'), 1500);
+    } catch (err: any) {
+      console.error('Product Submit Error:', err);
+      setError(`Failed to save product: ${err.message}`);
     } finally {
       setSaving(false);
       setPublishing(false);
@@ -1244,7 +1328,7 @@ export const CreateBook: React.FC = () => {
       
       if (isPublishing) {
         setPublished(true);
-        setMessage(isAdmin ? 'Book Published Successfully!' : 'Submitted for review!');
+        setMessage(isAdmin ? 'Event / Ticket Published Successfully!' : 'Event / Ticket Submitted for Admin Review & Approval!');
       } else {
         setMessage('Draft Saved Successfully!');
       }
@@ -1662,6 +1746,165 @@ export const CreateBook: React.FC = () => {
             <p className="font-bold text-sm">{message}</p>
             <Button variant="ghost" size="icon" className="ml-auto" onClick={() => setMessage('')}><X className="w-4 h-4" /></Button>
           </div>
+        )}
+
+        {/* Vendor Scope Boundary Protection: Vendors NEVER see Ticket/Event workflows */}
+        {isVendor && !isAdmin && !isMpr && (contentType === 'event' || contentType === 'ticket' || contentType === 'ebook') && (
+          <Card className="border-amber-200 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-900/40 rounded-3xl p-8 text-center space-y-4 shadow-md">
+            <ShieldAlert className="w-12 h-12 text-amber-600 mx-auto" />
+            <h2 className="text-xl font-black text-gray-900 dark:text-white">Vendor Portal Scope Boundary</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
+              Vendors manage their shop catalog, list products, and publish vendor articles. Ticket & event creation is strictly reserved for Platform Administrators and Marketing Partners (MPR).
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center pt-2">
+              <Button onClick={() => setTypeState('product')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider">
+                <ShoppingBag className="w-4 h-4 mr-2" /> Go to Product Studio
+              </Button>
+              <Button onClick={() => setTypeState('blog')} variant="outline" className="font-bold rounded-xl text-xs uppercase tracking-wider">
+                Create Vendor Post
+              </Button>
+              <Button onClick={() => navigate('/dashboard')} variant="ghost" className="font-bold rounded-xl text-xs uppercase tracking-wider">
+                Return to Dashboard
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Dedicated Vendor Product & Listing Studio */}
+        {contentType === 'product' && (
+          <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white dark:bg-[#0d0d15] overflow-hidden">
+            <CardHeader className="bg-slate-900 text-white p-8 md:p-10 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="flex items-center gap-3 mb-2">
+                <Badge className="bg-emerald-500 text-slate-950 font-extrabold uppercase tracking-widest text-[9px]">
+                  Vendor Shop Studio
+                </Badge>
+                {isAdmin && <Badge className="bg-amber-400 text-slate-950 font-black text-[9px]">Admin Management Mode</Badge>}
+              </div>
+              <CardTitle className="text-3xl md:text-4xl font-black italic tracking-tight">Create Shop Product / Listing</CardTitle>
+              <CardDescription className="text-slate-300 font-medium text-sm mt-1">
+                List products, goods, or merchandise in your EVVEX vendor storefront.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 md:p-10 space-y-8">
+              {/* 1. Product Title */}
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                  Product / Item Title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  placeholder="e.g. Handmade Leather Tote, Custom Event Merch, Premium Coffee Beans"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-black text-lg focus:ring-2 ring-emerald-500/20"
+                />
+              </div>
+
+              {/* 2. Product Description */}
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Product Specifications & Description</Label>
+                <Textarea
+                  placeholder="Describe your product, materials, sizes, shipping details, or pickup instructions..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="h-28 rounded-2xl bg-slate-50 border-slate-100 font-medium text-sm p-4 resize-none"
+                />
+              </div>
+
+              {/* 3. Category & Pricing */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Category</Label>
+                  <select
+                    value={genreId}
+                    onChange={(e) => setGenreId(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-emerald-400 outline-none transition-all"
+                  >
+                    <option value="">Select Product Category...</option>
+                    {genres.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Price (NGN ₦)</Label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">₦</span>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 5000"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className="h-14 pl-10 rounded-2xl bg-slate-50 border-slate-100 font-black text-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Product Display Image */}
+              <div className="space-y-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                  <Store className="w-4 h-4 text-emerald-600" /> Product Image / Photo
+                </Label>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Option 1: Paste Image URL</span>
+                    <Input
+                      placeholder="https://images.unsplash.com/..."
+                      value={coverImage}
+                      onChange={(e) => setCoverImage(e.target.value)}
+                      className="h-14 rounded-2xl bg-white border-slate-200 font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Option 2: Direct Photo Upload</span>
+                    <label className="flex items-center justify-center w-full h-24 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-white hover:bg-slate-100/50 transition-all p-4">
+                      <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                        <Upload className="w-5 h-5 text-emerald-600" />
+                        <span>Upload photo file</span>
+                      </div>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload('cover', e)} />
+                    </label>
+                  </div>
+                  {coverImage && (
+                    <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-slate-200">
+                      <img src={coverImage} alt="Product preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 5. Vendor Pen/Shop Name */}
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Vendor / Shop Name</Label>
+                <Input
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="e.g. Deluxe Apparel Shop"
+                  className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => handleProductSubmit(false)}
+                disabled={saving || publishing}
+                className="rounded-2xl h-14 px-8 border-2 font-black text-xs uppercase tracking-wider gap-2"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save Draft
+              </Button>
+              <Button
+                onClick={() => handleProductSubmit(true)}
+                disabled={saving || publishing}
+                className="rounded-2xl h-14 px-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider gap-2 shadow-xl shadow-emerald-100"
+              >
+                {publishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                Publish to Vendor Shop
+              </Button>
+            </CardFooter>
+          </Card>
         )}
 
         {/* Dedicated Blog Creator View */}
@@ -2217,8 +2460,8 @@ export const CreateBook: React.FC = () => {
           </Card>
         )}
 
-        {/* Multi-step Card Generation Wizard ONLY for eBooks */}
-        {contentType === 'ebook' && (
+        {/* Event & Ticket Architect Wizard (Admin & MPR only) */}
+        {(contentType === 'ebook' || contentType === 'event' || contentType === 'ticket') && !(isVendor && !isAdmin && !isMpr) && (
           <AnimatePresence mode="wait">
             {activeStep === 'content' && (
               <motion.div 
@@ -2232,14 +2475,14 @@ export const CreateBook: React.FC = () => {
                   <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
                     <div className="flex items-center gap-4 mb-2">
                       <div className="p-3 bg-white rounded-2xl shadow-sm text-indigo-600">
-                        <BookOpen className="w-6 h-6" />
+                        <Ticket className="w-6 h-6" />
                       </div>
                       <div>
                         <CardTitle className="text-2xl font-black text-slate-900 tracking-tight italic">
-                          eBook Architect
+                          Event & Ticket Architect
                         </CardTitle>
                         <CardDescription className="font-medium">
-                          Paste your knowledge. We'll turn it into a high-engagement swipeable card book.
+                          Design your event experience, configure highlights, and set up ticket pricing tiers.
                         </CardDescription>
                       </div>
                     </div>
@@ -2247,9 +2490,9 @@ export const CreateBook: React.FC = () => {
                   <CardContent className="p-8 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Working Title</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Event Title</Label>
                         <Input 
-                          placeholder="e.g. The Psychology of Selling" 
+                          placeholder="e.g. EVVEX Annual Tech & Culture Summit, Live Gala Concert" 
                           value={title} 
                           onChange={(e) => setTitle(e.target.value)}
                           className="h-14 rounded-2xl bg-white border-slate-100 focus:ring-2 ring-indigo-500/20 font-bold transition-all"
@@ -2758,8 +3001,8 @@ export const CreateBook: React.FC = () => {
                   <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner space-y-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                       <div className="space-y-0.5">
-                        <span className="text-xs font-black uppercase tracking-widest text-indigo-600 block">Offer Catalog for Free</span>
-                        <span className="text-[10px] text-slate-400 font-bold block">Let readers read insight cards & download PDF for free</span>
+                        <span className="text-xs font-black uppercase tracking-widest text-indigo-600 block">Offer Free Admission</span>
+                        <span className="text-[10px] text-slate-400 font-bold block">Allow patrons to claim passes or attend this event for free</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none">
                         <input
@@ -2784,7 +3027,7 @@ export const CreateBook: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in zoom-in-95 duration-200">
                           <div className="space-y-3">
                             <Label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                              <DollarSign className="w-4 h-4" /> Ebook Price
+                              <Ticket className="w-4 h-4 text-indigo-600" /> Standard Ticket Price
                             </Label>
                             <div className="relative">
                               <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xl">₦</span>
@@ -2798,7 +3041,7 @@ export const CreateBook: React.FC = () => {
                           </div>
                           <div className="space-y-3">
                             <Label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                              <DollarSign className="w-4 h-4" /> PDF Download Price
+                              <Ticket className="w-4 h-4 text-amber-500" /> VIP / Premium Ticket Price
                             </Label>
                             <div className="relative">
                               <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xl">₦</span>
@@ -2810,7 +3053,7 @@ export const CreateBook: React.FC = () => {
                               />
                             </div>
                           </div>
-                          <p className="col-span-full text-[10px] font-bold text-slate-400 text-center uppercase tracking-tighter italic">Set to 0 if you want this content to be free.</p>
+                          <p className="col-span-full text-[10px] font-bold text-slate-400 text-center uppercase tracking-tighter italic">Set to 0 if you want admission to be free.</p>
                         </div>
 
                         {/* Live Gross vs Net Revenue Split Visualizer */}
@@ -3339,10 +3582,10 @@ export const CreateBook: React.FC = () => {
                   {published && !isAdmin ? (
                     <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-900 p-4 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
                       <span className="text-xs font-bold flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> This eBook is published and live in the store. Edits are locked to preserve content consistency.
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> This event & ticket listing is published and live in the store. Edits are locked to preserve content consistency.
                       </span>
                       <Button onClick={() => navigate('/dashboard')} variant="outline" className="text-xs font-black rounded-xl w-full sm:w-auto shrink-0">
-                        Return to Author Hub
+                        Return to Management Dashboard
                       </Button>
                     </div>
                   ) : (
@@ -3362,7 +3605,7 @@ export const CreateBook: React.FC = () => {
                         className="w-full sm:flex-[2] min-h-[44px] h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-wider shadow-xl shadow-emerald-100 gap-2"
                       >
                         {publishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                        {publishing ? (isAdmin ? 'Publishing...' : 'Submitting...') : (isAdmin ? 'Finalize & Publish Book' : 'Submit Book for Review')}
+                        {publishing ? (isAdmin ? 'Publishing...' : 'Submitting...') : (isAdmin ? 'Finalize & Publish Event / Ticket' : 'Submit Event / Ticket for Admin Review')}
                       </Button>
                     </>
                   )}

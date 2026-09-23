@@ -30,7 +30,10 @@ import {
   MessageSquarePlus,
   Smartphone,
   Trophy,
-  User
+  User,
+  Ticket,
+  Store,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
@@ -171,22 +174,43 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
     accountTier === 'admin' || 
     isAdmin;
 
+  const isVendorUser = 
+    accountTier === 'author' || 
+    (user as any)?.account_tier === 'author' || 
+    (user as any)?.role === 'vendor' ||
+    profile?.account_tier === 'vendor' ||
+    profile?.app_role === 'vendor' ||
+    profile?.is_approved_author === true ||
+    profile?.is_author === true;
+
   const menuItems: { icon: any; label: string; path: string; hidden?: boolean; color?: string; action?: () => void }[] = [
-    { icon: LayoutDashboard, label: 'User Dashboard', path: '/dashboard' },
-    { icon: BookOpen, label: 'My Bookshelf', path: '/bookshelf' },
-    { icon: ShieldCheck, label: 'ADMIN CENTER', path: '/admin', hidden: accountTier !== 'admin', color: "text-red-700 font-black animate-pulse bg-red-50" },
-    { icon: Heart, label: 'Confessions Studio', path: '/admin/confessions', hidden: accountTier !== 'admin', color: "text-pink-600" },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: Ticket, label: 'Tickets & Purchases', path: '/bookshelf' },
+    { icon: ShieldCheck, label: 'ADMIN CENTER', path: '/admin', hidden: !isAdmin && accountTier !== 'admin', color: "text-red-700 font-black animate-pulse bg-red-50" },
+    { icon: Heart, label: 'Confessions Studio', path: '/admin/confessions', hidden: !isAdmin && accountTier !== 'admin', color: "text-pink-600" },
     { icon: Users, label: '★ MPR Partner Center', path: '/mpr', hidden: !isMpr, color: "text-purple-700 dark:text-purple-400 font-black bg-purple-50 dark:bg-purple-950/30" },
-    { icon: Zap, label: 'Upgrade to Premium', path: '/upgrade/premium', hidden: accountTier !== 'free', color: "text-amber-600 font-bold" },
-    { icon: ShieldCheck, label: 'Become an Author', path: '/apply/author', hidden: accountTier !== 'free' && accountTier !== 'premium', color: "text-indigo-600 font-bold" },
-    { icon: BookOpen, label: '+ eBook Studio', path: '/create-book?type=ebook', hidden: !isPremiumAuthor, color: "text-indigo-600 font-bold" },
-    { icon: Newspaper, label: '+ Blog Studio', path: '/create-book?type=blog', hidden: !isPremiumAuthor, color: "text-emerald-600 font-bold" },
-    { icon: Video, label: '+ Video Studio', path: '/create-book?type=video', hidden: !isPremiumAuthor, color: "text-pink-600 font-bold" },
-    { icon: BookText, label: 'My Authored Books', path: '/my-books', hidden: !isPremiumAuthor },
+    
+    // Event & Ticket Creation (ADMIN & MPR ONLY — Strictly forbidden for Vendors)
+    { icon: Ticket, label: '+ Create Event & Ticket', path: '/create-book?type=event', hidden: !isAdmin && !isMpr, color: "text-amber-500 font-bold" },
+    
+    // Trivia Engine (ADMIN & MPR ONLY — Strictly forbidden for Vendors, Patrons, VIPs)
+    { icon: Trophy, label: 'Trivia Engine', path: '/trivia', hidden: !isAdmin && !isMpr, color: "text-purple-600 font-bold" },
+
+    // Vendor Shop & Product Operations (Vendors & Admin)
+    { icon: Store, label: 'Vendor Shop Management', path: '/vendor', hidden: !isVendorUser && !isAdmin, color: "text-emerald-600 font-bold" },
+    { icon: PlusCircle, label: '+ Create Product / Item', path: '/create-book?type=product', hidden: !isVendorUser && !isAdmin, color: "text-emerald-600 font-bold" },
+    { icon: Newspaper, label: '+ Blog & Vendor Post', path: '/create-book?type=blog', hidden: !isVendorUser && !isAdmin && !isMpr, color: "text-indigo-600 font-bold" },
+    { icon: BookText, label: 'My Products & Listings', path: '/my-books', hidden: !isVendorUser && !isAdmin },
+    
+    // Onboarding / Upgrades
+    { icon: Zap, label: 'Upgrade to VIP', path: '/upgrade/premium', hidden: accountTier !== 'free', color: "text-amber-600 font-bold" },
+    { icon: Store, label: 'Become a Vendor / Shop', path: '/apply/author', hidden: isVendorUser || accountTier === 'admin' || isMpr, color: "text-indigo-600 font-bold" },
+
+    // General Discovery & Operations
     { icon: BarChart3, label: 'Analytics Dashboard', path: '/analytics', color: "text-emerald-600 font-bold" },
     { icon: Wand2, label: 'Promo Image Studio', path: '/promo-studio', color: "text-amber-500 font-bold" },
     { icon: Smartphone, label: '📱 Download Android APK', path: '/download', color: "text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-950/20" },
-    { icon: BookOpen, label: 'Marketplace', path: '/dashboard/discovery' },
+    { icon: Store, label: 'Vendor Marketplace', path: '/dashboard/discovery' },
     { icon: Wallet, label: 'Earnings', path: '/earnings' },
     { icon: ArrowUpRight, label: 'Withdrawal', path: '/earnings#withdraw' },
     { icon: Users, label: 'Referral', path: '/dashboard#referrals' },
@@ -202,26 +226,26 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
         <div className="p-6 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <BookOpen className="w-8 h-8 text-green-700 dark:text-[#EAB308]" />
-            <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">CalmReader</span>
+            <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">EVVEX</span>
           </Link>
         </div>
 
         <div className="px-6 mb-6">
-          {accountTier === 'admin' ? (
+          {accountTier === 'admin' || isAdmin ? (
             <div className="flex flex-col gap-2">
               <div className="bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Administrator</div>
               <Link to="/admin" className="text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" /> Go to Admin Panel
               </Link>
             </div>
-          ) : accountTier === 'marketing_partner' || accountTier === 'mpr' || profile?.account_tier === 'marketing_partner' ? (
-            <div className="bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Marketing Partner</div>
-          ) : accountTier === 'author' ? (
-            <div className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Verified Author</div>
+          ) : isMpr ? (
+            <div className="bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Marketing Partner (MPR)</div>
+          ) : isVendorUser ? (
+            <div className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Verified Vendor</div>
           ) : accountTier === 'premium' ? (
-            <div className="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Premium Member</div>
+            <div className="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">VIP Patron</div>
           ) : (
-            <div className="bg-gray-100 text-gray-700 dark:bg-white/5 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Free Reader</div>
+            <div className="bg-gray-100 text-gray-700 dark:bg-white/5 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded inline-block">Visitor / Patron</div>
           )}
         </div>
 
@@ -270,7 +294,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
           >
           <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <BookOpen className="w-6 h-6 text-green-700 dark:text-[#EAB308]" />
-            <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-white">CalmReader</span>
+            <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-white">EVVEX</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link 
@@ -510,17 +534,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
               <div className="flex flex-col gap-1">
                 <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity" onClick={() => setIsMobileMenuOpen(false)}>
                   <BookOpen className="w-6 h-6 text-green-700" />
-                  <span className="font-bold text-lg tracking-tight">CalmReader</span>
+                  <span className="font-bold text-lg tracking-tight">EVVEX</span>
                 </Link>
                 <div>
-                  {accountTier === 'admin' ? (
+                  {accountTier === 'admin' || isAdmin ? (
                     <div className="bg-red-100 text-red-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Administrator</div>
-                  ) : accountTier === 'author' ? (
-                    <div className="bg-indigo-100 text-indigo-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Verified Author</div>
+                  ) : isMpr ? (
+                    <div className="bg-purple-100 text-purple-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Marketing Partner</div>
+                  ) : isVendorUser ? (
+                    <div className="bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Verified Vendor</div>
                   ) : accountTier === 'premium' ? (
-                    <div className="bg-amber-100 text-amber-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Premium Member</div>
+                    <div className="bg-amber-100 text-amber-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">VIP Patron</div>
                   ) : (
-                    <div className="bg-gray-100 text-gray-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Free Reader</div>
+                    <div className="bg-gray-100 text-gray-700 text-[8px] font-black uppercase tracking-widest py-0.5 px-1.5 rounded inline-block">Visitor / Patron</div>
                   )}
                 </div>
               </div>

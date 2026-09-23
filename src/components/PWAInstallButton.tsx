@@ -70,7 +70,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <button
           id="pwa-install-btn"
           onClick={handleInstallClick}
-          title="Install CalmReader App"
+          title="Install EVVEX App"
           aria-label="Install App"
           className={`p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 dark:text-[#EAB308] transition-all cursor-pointer flex items-center justify-center shrink-0 ${className}`}
         >
@@ -110,7 +110,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <Download className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Install CalmReader App</h4>
+              <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Install EVVEX App</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400">Get instant access on your home screen or desktop with offline support.</p>
             </div>
           </div>
@@ -151,7 +151,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                 <Smartphone className="w-6 h-6 text-black" />
               </div>
               <div>
-                <h3 className="font-extrabold text-lg text-white">Install CalmReader</h3>
+                <h3 className="font-extrabold text-lg text-white">Install EVVEX</h3>
                 <p className="text-xs text-amber-400 font-semibold">Add to your Home Screen</p>
               </div>
             </div>
@@ -200,7 +200,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               )}
 
               <p className="text-xs text-slate-400 text-center">
-                Once added, open CalmReader directly from your phone or desktop home screen!
+                Once added, open EVVEX directly from your phone or desktop home screen!
               </p>
 
               <Button
@@ -223,12 +223,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             </div>
 
             <div>
-              <h3 className="font-black text-xl text-white">CalmReader App Installed!</h3>
+              <h3 className="font-black text-xl text-white">EVVEX App Installed!</h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                CalmReader has been added to your <strong className="text-amber-400">Home Screen</strong> and <strong className="text-amber-400">App Drawer</strong>.
+                EVVEX has been added to your <strong className="text-amber-400">Home Screen</strong> and <strong className="text-amber-400">App Drawer</strong>.
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                You can now launch CalmReader anytime from your device's home screen as a standalone app with fast offline support.
+                You can now launch EVVEX anytime from your device's home screen as a standalone app with fast offline support.
               </p>
             </div>
 

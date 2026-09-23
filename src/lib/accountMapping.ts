@@ -24,8 +24,8 @@ export function isPlatformAdminEmail(email?: string | null): boolean {
 /**
  * Resolves the EVEX Account Type (Identity Persona) from user profile data.
  * Mappings:
- * - Legacy 'author' / 'event_host' / approved authors -> EVENT_CREATOR
- * - 'vendor' -> VENDOR
+ * - Legacy 'author' / approved authors / 'vendor' -> VENDOR (Restructured Author = Shop/Vendor)
+ * - 'event_host' -> EVENT_CREATOR
  * - Legacy 'free' / 'premium' / 'guest' -> PATRON
  */
 export function resolveEvexAccountType(profileOrUser: any): EvexAccountType {
@@ -34,18 +34,19 @@ export function resolveEvexAccountType(profileOrUser: any): EvexAccountType {
   const tier = (profileOrUser.account_tier || profileOrUser.accountTier || '').toLowerCase();
   const appRole = (profileOrUser.app_role || profileOrUser.role || '').toLowerCase();
 
-  // Vendor check
-  if (tier === 'vendor' || appRole === 'vendor') {
-    return 'VENDOR';
-  }
-
-  // Event Creator check (legacy author or event_host)
+  // Vendor check (Restructured Author is Vendor in EVVEX)
   if (
+    tier === 'vendor' || 
+    appRole === 'vendor' || 
     tier === 'author' || 
-    appRole === 'event_host' || 
     profileOrUser.is_approved_author === true || 
     profileOrUser.is_author === true
   ) {
+    return 'VENDOR';
+  }
+
+  // Event Creator check (dedicated event hosts)
+  if (appRole === 'event_host') {
     return 'EVENT_CREATOR';
   }
 

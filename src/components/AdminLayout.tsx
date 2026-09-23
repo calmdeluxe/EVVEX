@@ -168,7 +168,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <ShieldAlert className="w-8 h-8 text-green-700" />
           <div className="flex flex-col">
             <span className="font-bold text-xl tracking-tight leading-none">Admin</span>
-            <span className="text-xs text-gray-500 font-medium">CalmReader Panel</span>
+            <span className="text-xs text-gray-500 font-medium">EVVEX Panel</span>
           </div>
         </Link>
 

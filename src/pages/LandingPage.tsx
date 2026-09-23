@@ -528,7 +528,7 @@ export const LandingPage: React.FC = () => {
         <nav className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
             <BookOpen className="w-8 h-8 text-[#EAB308] fill-[#EAB308]/20" />
-            <span className={`font-sans font-black text-2xl tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>CalmReader</span>
+            <span className={`font-sans font-black text-2xl tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>EVVEX</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -1375,9 +1375,9 @@ export const LandingPage: React.FC = () => {
                <Gift className="w-10 h-10" />
             </div>
             <div>
-               <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Join CalmReader Today</h2>
+               <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Join EVVEX Today</h2>
                <p className={`text-lg leading-relaxed font-medium ${isDarkMode ? 'text-white/40' : 'text-slate-600'}`}>
-                  Read amazing stories, share your own and be part of a community that truly gets you.
+                  Discover amazing experiences, connect with vendors and be part of an exclusive event community.
                </p>
             </div>
           </div>
@@ -1393,7 +1393,7 @@ export const LandingPage: React.FC = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
                <BookOpen className="w-6 h-6 text-[#EAB308]" />
-               <span className={`font-sans font-black text-xl tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>CalmReader</span>
+               <span className={`font-sans font-black text-xl tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>EVVEX</span>
             </div>
             
             <div className={`flex flex-wrap justify-center gap-6 sm:gap-8 text-xs font-semibold ${isDarkMode ? 'text-white/40' : 'text-slate-600'}`}>
@@ -1408,7 +1408,7 @@ export const LandingPage: React.FC = () => {
             </div>
 
             <div className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-white/20' : 'text-slate-500'}`}>
-              <p>© 2026 CalmReader. All Rights Reserved.</p>
+              <p>© 2026 EVVEX. All Rights Reserved.</p>
             </div>
           </div>
         </div>

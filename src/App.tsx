@@ -62,6 +62,7 @@ import { PrivateRoute } from './components/PrivateRoute';
 import { AdminRoute } from './components/AdminRoute';
 import { CreatorRoute } from './components/CreatorRoute';
 import { VendorRoute } from './components/VendorRoute';
+import { TriviaRoute } from './components/TriviaRoute';
 import { EbookPage } from './pages/EbookPage';
 import { AuthorAnalytics } from './pages/AuthorAnalytics';
 import { TriviaSharedPage } from './pages/TriviaSharedPage';
@@ -251,7 +252,7 @@ const AppContent = () => {
           @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         `}</style>
         <p style={{ marginTop: '16px', color: '#6b7280', fontSize: '14px', fontWeight: 'bold' }}>
-          Initializing CalmReader...
+          Initializing EVVEX...
         </p>
       </div>
     );
@@ -283,7 +284,7 @@ const AppContent = () => {
           <Route path="/purchase/:id" element={<Navigate to="/payment" />} />
           {/* Public Read is allowed for previews or if configured */}
           <Route path="/book/:slug/read" element={<PrivateRoute><PublicRead /></PrivateRoute>} />
-          <Route path="/explore/trivia" element={<TriviaHub />} />
+          <Route path="/explore/trivia" element={<TriviaRoute><TriviaHub /></TriviaRoute>} />
           <Route path="/anonymous" element={<AnonymousConfessions />} />
           <Route path="/env-debug" element={<EnvDebug />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -301,6 +302,9 @@ const AppContent = () => {
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/dashboard/:tab" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/create-book" element={<CreatorRoute><CreateBook /></CreatorRoute>} />
+          <Route path="/create-event" element={<MPRRoute><CreateBook /></MPRRoute>} />
+          <Route path="/create-ticket" element={<MPRRoute><CreateBook /></MPRRoute>} />
+          <Route path="/create-product" element={<VendorRoute><CreateBook /></VendorRoute>} />
           <Route path="/read/:id" element={<PrivateRoute><ReadBook /></PrivateRoute>} />
           <Route path="/book/:id/preview" element={<PrivateRoute><ReadBook /></PrivateRoute>} />
           <Route path="/redeem" element={<RedeemToken />} />
@@ -321,13 +325,14 @@ const AppContent = () => {
           <Route path="/creator" element={<Navigate to="/my-books" replace />} />
           <Route path="/creator/*" element={<CreatorRoute><MyBooks /></CreatorRoute>} />
           <Route path="/vendor" element={<VendorRoute><Dashboard /></VendorRoute>} />
+          <Route path="/vendor/products" element={<VendorRoute><MyBooks /></VendorRoute>} />
           <Route path="/vendor/*" element={<VendorRoute><Dashboard /></VendorRoute>} />
           
-          {/* Trivia Routes */}
-          <Route path="/trivia" element={<PrivateRoute><TriviaHub /></PrivateRoute>} />
-          <Route path="/trivia/ebook/:id" element={<PrivateRoute><TriviaPlayer /></PrivateRoute>} />
-          <Route path="/trivia/:id" element={<PrivateRoute><TriviaPlayer /></PrivateRoute>} />
-          <Route path="/trivia/share/:id" element={<TriviaSharedPage />} />
+          {/* Trivia Routes — STRICTLY RESERVED FOR ADMIN AND MPR */}
+          <Route path="/trivia" element={<TriviaRoute><TriviaHub /></TriviaRoute>} />
+          <Route path="/trivia/ebook/:id" element={<TriviaRoute><TriviaPlayer /></TriviaRoute>} />
+          <Route path="/trivia/:id" element={<TriviaRoute><TriviaPlayer /></TriviaRoute>} />
+          <Route path="/trivia/share/:id" element={<TriviaRoute><TriviaSharedPage /></TriviaRoute>} />
           <Route path="/admin/trivia" element={<AdminRoute><TriviaAdmin /></AdminRoute>} />
           
           <Route path="/ai-magic" element={<PrivateRoute><AiMagic /></PrivateRoute>} />
