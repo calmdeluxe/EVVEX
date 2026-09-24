@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product.
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, ArrowRight, Copy, BookOpen, Image as ImageIcon, Globe, Share2, X, Trophy, Video, Sparkles, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

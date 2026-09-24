@@ -135,7 +135,7 @@ export const AdminMprHub: React.FC = () => {
   const fetchHubFallback = async () => {
     try {
       const { data: rawUsers } = await supabase
-        .from("users")
+        .from("profiles")
         .select("id, email, full_name, username, account_tier, role, mpr_code, mpr_commission_rate, total_mpr_earnings, pending_mpr_earnings, bank_name, account_number, account_name, created_at, is_suspended, status")
         .or("account_tier.eq.marketing_partner,account_tier.eq.mpr,role.eq.marketing_partner,mpr_code.not.is.null")
         .order("created_at", { ascending: false });
@@ -229,7 +229,7 @@ export const AdminMprHub: React.FC = () => {
     setSearchingUsers(true);
     try {
       const { data: users } = await supabase
-        .from("users")
+        .from("profiles")
         .select("id, email, full_name, username, account_tier, mpr_code")
         .or(`email.ilike.%${query}%,full_name.ilike.%${query}%,username.ilike.%${query}%`)
         .limit(10);

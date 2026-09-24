@@ -46,7 +46,7 @@ export async function onRequest(context) {
     }
 
     const { data: profile } = await supabase
-      .from('users')
+      .from('profiles')
       .select('account_tier, is_admin, is_premium, role, app_role')
       .eq('id', user.id)
       .maybeSingle();

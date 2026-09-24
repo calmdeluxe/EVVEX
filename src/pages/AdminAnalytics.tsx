@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product.
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '../components/AdminLayout';
 import { useNavigate } from 'react-router-dom';

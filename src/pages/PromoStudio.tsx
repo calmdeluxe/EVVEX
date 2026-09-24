@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product.
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';

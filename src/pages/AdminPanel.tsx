@@ -347,9 +347,32 @@ export const AdminPanel: React.FC = () => {
     error: null
   });
 
-  // DISABLED: was polling CalmReader tables
   const fetchRealtimeCounts = async () => {
-    // DISABLED: was polling CalmReader tables
+    setDbCounts(current => ({ ...current, loading: true, error: null }));
+    try {
+      const [profilesResult, eventsResult, ticketsResult] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('events').select('id', { count: 'exact', head: true }),
+        supabase.from('event_tickets').select('id', { count: 'exact', head: true }),
+      ]);
+
+      const firstError = profilesResult.error || eventsResult.error || ticketsResult.error;
+      if (firstError) throw firstError;
+
+      setDbCounts({
+        books: eventsResult.count || 0,
+        blogs: ticketsResult.count || 0,
+        authors: profilesResult.count || 0,
+        loading: false,
+        error: null,
+      });
+    } catch (error: any) {
+      setDbCounts(current => ({
+        ...current,
+        loading: false,
+        error: error?.message || 'Unable to retrieve live counts',
+      }));
+    }
   };
 
   const mask = (val: string) => {
@@ -2688,7 +2711,7 @@ export const AdminPanel: React.FC = () => {
                                    throw new Error("Book not found.");
                                  }
 
-                                 const saleAmount = bookData.price || 0;
+                                  const saleAmount = Number(unlockForm.amount) || 0;
 
                                  const { data: existingTx } = await supabase
                                    .from("transactions")

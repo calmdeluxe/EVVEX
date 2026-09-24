@@ -1,4 +1,5 @@
 // LEGACY: CalmReader file, not part of EVEX product. To be unmounted in a later pass.
+// LEGACY: CalmReader file, not part of EVEX product.
 import { supabase } from '../supabase';
 
 export interface BookPayload {
