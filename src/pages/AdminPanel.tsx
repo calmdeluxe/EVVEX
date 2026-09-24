@@ -133,20 +133,20 @@ export const AdminPanel: React.FC = () => {
   // Robust query helper to read from user_profiles_public with users table fallback
   const queryUsers = async (selectStr: string = '*', filterIds?: string[]) => {
     try {
-      let query = supabase.from('user_profiles_public').select(selectStr);
+      let query = supabase.from('profiles').select(selectStr);
       if (filterIds && filterIds.length > 0) {
         query = query.in('id', filterIds);
       }
       const { data, error } = await query;
       if (!error && data) return { data, error: null };
       
-      let fbQuery = supabase.from('users').select(selectStr);
+      let fbQuery = supabase.from('profiles').select(selectStr);
       if (filterIds && filterIds.length > 0) {
         fbQuery = fbQuery.in('id', filterIds);
       }
       return await fbQuery;
     } catch (e: any) {
-      let fbQuery = supabase.from('users').select(selectStr);
+      let fbQuery = supabase.from('profiles').select(selectStr);
       if (filterIds && filterIds.length > 0) {
         fbQuery = fbQuery.in('id', filterIds);
       }
@@ -157,20 +157,20 @@ export const AdminPanel: React.FC = () => {
   const queryUserByEmail = async (email: string) => {
     try {
       const { data, error } = await supabase
-        .from('user_profiles_public')
+        .from('profiles')
         .select('id')
         .eq('email', email)
         .maybeSingle();
       if (!error && data) return { data, error: null };
       
       return await supabase
-        .from('users')
+        .from('profiles')
         .select('id')
         .eq('email', email)
         .maybeSingle();
     } catch (e) {
       return await supabase
-        .from('users')
+        .from('profiles')
         .select('id')
         .eq('email', email)
         .maybeSingle();
@@ -182,15 +182,14 @@ export const AdminPanel: React.FC = () => {
       const loadBooks = async () => {
         try {
           const { data, error } = await supabase
-            .from('books')
+            .from('events')
             .select('id, title, cover_image')
-            .neq('status', -1)
             .order('title', { ascending: true });
           if (!error && data) {
             setHealthBooks(data);
           }
         } catch (err) {
-          console.error("Failed to load books for health diagnostic tools:", err);
+          console.error("Failed to load events for health diagnostic tools:", err);
         }
       };
       loadBooks();
@@ -232,9 +231,9 @@ export const AdminPanel: React.FC = () => {
         .from('media')
         .getPublicUrl(fileName);
 
-      // Auto-fetch the public URL and update the book's cover_image column
+      // Auto-fetch the public URL and update the event's cover_image column
       const { error: updateError } = await supabase
-        .from('books')
+        .from('events')
         .update({ cover_image: publicUrl })
         .eq('id', selectedHealthBookId);
 
@@ -348,46 +347,9 @@ export const AdminPanel: React.FC = () => {
     error: null
   });
 
+  // DISABLED: was polling CalmReader tables
   const fetchRealtimeCounts = async () => {
-    setDbCounts(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      // 1. Fetch eBook counts & blog counts from 'books' table
-      const { data: booksData, error: booksError } = await supabase
-        .from('books')
-        .select('id, admin_note, is_published')
-        .neq('status', -1);
-      
-      if (booksError) throw booksError;
-
-      const ebookCount = (booksData || []).filter((b: any) => 
-        !(b.admin_note || '').includes('type:blog') && 
-        !(b.admin_note || '').includes('type:video')
-      ).length;
-
-      const blogCount = (booksData || []).filter((b: any) => 
-        (b.admin_note || '').includes('type:blog')
-      ).length;
-
-      // 2. Fetch authors counts from users table
-      const { data: usersData, error: usersError } = await queryUsers('id, account_tier, is_approved_author');
-
-      if (usersError) throw usersError;
-
-      const authorCount = (usersData || []).filter((u: any) => 
-        u.account_tier === 'author' || u.is_approved_author === true || u.is_approved_author === 1
-      ).length;
-
-      setDbCounts({
-        books: ebookCount,
-        blogs: blogCount,
-        authors: authorCount,
-        loading: false,
-        error: null
-      });
-    } catch (err: any) {
-      console.error("[AdminPanel] Error of fetchRealtimeCounts:", err);
-      setDbCounts(prev => ({ ...prev, loading: false, error: err.message || "Failed to fetch counts" }));
-    }
+    // DISABLED: was polling CalmReader tables
   };
 
   const mask = (val: string) => {
@@ -400,12 +362,14 @@ export const AdminPanel: React.FC = () => {
     if (isAdmin) {
       fetchAdminData(true);
       checkSystemHealth();
-      fetchRealtimeCounts();
+      // DISABLED: was polling CalmReader tables
+      // fetchRealtimeCounts();
 
       // Implement background polling to immediately reflect fixed columns/policy recursion issues
       const healthTimer = setInterval(() => {
         checkSystemHealth(true);
-        fetchRealtimeCounts();
+        // DISABLED: was polling CalmReader tables
+        // fetchRealtimeCounts();
       }, 10000);
 
       return () => clearInterval(healthTimer);
@@ -416,17 +380,13 @@ export const AdminPanel: React.FC = () => {
     const isSilent = silent === true;
     if (!isSilent) setHealthChecking(true);
     const requiredColumns = [
-      { table: 'users', column: 'account_tier', label: 'Account Tier', migration: 'FIX_500' },
-      { table: 'users', column: 'is_approved_author', label: 'Author Approval Status', migration: 'FIX_500' },
-      { table: 'author_applications', column: 'id', label: 'Author Applications Table', migration: 'NEW' },
-      { table: 'payment_verifications', column: 'id', label: 'Manual Payments Table', migration: 'NEW' },
-      { table: 'support_requests', column: 'id', label: 'Support Table', migration: 'NEW' },
-      { table: 'upgrade_tokens', column: 'id', label: 'Upgrade Portal System', migration: 'UPGRADE_SYSTEM_SQL' },
-      { table: 'books', column: 'status', label: 'Book Status (Active/Draft)', migration: 'SUPABASE_MIGRATION_3.md' },
-      { table: 'books', column: 'is_published', label: 'Published Flag', migration: 'SUPABASE_MIGRATION_3.md' },
-      { table: 'books', column: 'admin_note', label: 'Admin Note Column', migration: 'SUPABASE_MIGRATION_2.md' },
-      { table: 'users', column: 'is_admin', label: 'Admin Permissions', migration: 'SUPABASE_MIGRATION_3.md' },
-      { table: 'users', column: 'is_premium', label: 'Premium Status', migration: 'SUPABASE_MIGRATION_3.md' }
+      { table: 'profiles', column: 'app_role', label: 'App Role', migration: 'EVEX_SCHEMA' },
+      { table: 'profiles', column: 'is_admin', label: 'Admin Permissions', migration: 'EVEX_SCHEMA' },
+      { table: 'events', column: 'status', label: 'Event Status', migration: 'EVEX_SCHEMA' },
+      { table: 'events', column: 'title', label: 'Event Title', migration: 'EVEX_SCHEMA' },
+      { table: 'event_tickets', column: 'id', label: 'Event Tickets Table', migration: 'EVEX_SCHEMA' },
+      { table: 'support_requests', column: 'id', label: 'Support Table', migration: 'EVEX_SCHEMA' },
+      { table: 'transactions', column: 'id', label: 'Transactions Table', migration: 'EVEX_SCHEMA' }
     ];
 
     try {
@@ -455,13 +415,13 @@ export const AdminPanel: React.FC = () => {
         console.error("Infinite recursion detected in policies. Run Repair to fix.");
       }
 
-      // Check backend config health directly using direct query to users
+      // Check backend config health directly using direct query to profiles
       try {
         const u = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL || '';
         const k = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
         const ref = u ? u.split('.')[0].replace('https://', '') : '';
         
-        const { error: pingErr } = await supabase.from('users').select('id').limit(1);
+        const { error: pingErr } = await supabase.from('profiles').select('id').limit(1);
         const isHealthy = !pingErr;
         
         const bHealth = {
@@ -523,11 +483,11 @@ export const AdminPanel: React.FC = () => {
         // stats
         (async () => {
           try {
-            const { count: booksCount } = await supabase.from('books').select('*', { count: 'exact', head: true }).neq('status', -1);
+            const { count: booksCount } = await supabase.from('events').select('*', { count: 'exact', head: true });
             const { data: usersDataForCount, error: usersErrorForCount } = await queryUsers('id');
             const usersCount = !usersErrorForCount && usersDataForCount ? usersDataForCount.length : 0;
-            const { data: revData } = await supabase.from('payment_verifications').select('amount, status');
-            const revenueData = (revData || []).filter((r: any) => r.status === 'approved' || r.status === 1 || r.status === '1');
+            const { data: revData } = await supabase.from('transactions').select('amount, status');
+            const revenueData = (revData || []).filter((r: any) => r.status === 'success' || r.status === 'successful');
             const totalRev = (revenueData || []).reduce((sum: number, r: any) => sum + (parseFloat(r.amount) || 0), 0);
             setStats({
               totalRevenue: totalRev,
@@ -539,33 +499,13 @@ export const AdminPanel: React.FC = () => {
           }
         })(),
 
-        // triviaSubmissions
+        // triviaSubmissions (LEGACY CalmReader feature, gracefully handled)
         (async () => {
           try {
-            const { data: dbTrivias } = await supabase
-              .from('trivias')
-              .select('*')
-              .eq('deleted', false)
-              .in('status', ['pending', 'active', 'rejected'])
-              .order('created_at', { ascending: false });
-            
-            if (dbTrivias) {
-              const creatorIds = [...new Set(dbTrivias.map((v: any) => v.creator_id))].filter(Boolean);
-              let userMap: Record<string, any> = {};
-              if (creatorIds.length > 0) {
-                const { data: usersData } = await supabase.from('users').select('id, email, full_name').in('id', creatorIds);
-                if (usersData) {
-                  userMap = usersData.reduce((acc: any, u: any) => { acc[u.id] = u; return acc; }, {});
-                }
-              }
-              const mappedTrivias = dbTrivias.map((t: any) => ({
-                ...t,
-                creator: userMap[t.creator_id] || { email: 'Unknown Requestor' }
-              }));
-              setTriviaSubmissions(mappedTrivias);
-            }
+            // LEGACY: trivias table does not exist in EVEX schema
+            setTriviaSubmissions([]);
           } catch (err) {
-            console.error('[AdminPanel] triviaSubmissions query failed:', err);
+            // Swallowed
           }
         })(),
 
@@ -662,7 +602,7 @@ export const AdminPanel: React.FC = () => {
                 }
               }
               if (bookIds.length > 0) {
-                const { data: booksData } = await supabase.from('books').select('id, title').in('id', bookIds);
+                const { data: booksData } = await supabase.from('events').select('id, title').in('id', bookIds);
                 if (booksData) {
                   bookMap = booksData.reduce((acc: any, b: any) => { acc[b.id] = b; return acc; }, {});
                 }
@@ -670,7 +610,7 @@ export const AdminPanel: React.FC = () => {
               const mappedTx = dbTx.map((t: any) => ({
                 ...t,
                 users: userMap[t.user_id] || { email: 'Unknown User' },
-                books: bookMap[t.book_id] || { title: 'Unknown eBook' }
+                books: bookMap[t.book_id] || { title: 'Unknown Event' }
               }));
               setTransactions(mappedTx);
             }
@@ -837,7 +777,7 @@ export const AdminPanel: React.FC = () => {
     if (!selectedUser) return;
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           bank_name: payoutForm.bank_name,
           account_number: payoutForm.account_number,
@@ -858,15 +798,13 @@ export const AdminPanel: React.FC = () => {
     setReviewMode(true);
     setLoadingCards(true);
     try {
-      const { data, error } = await supabase.from('books').select('cards_json').eq('id', book.id).maybeSingle();
+      const { data, error } = await supabase.from('events').select('description').eq('id', book.id).maybeSingle();
       if (error) throw error;
-      let cards = data?.cards_json;
-      if (typeof cards === 'string') {
-        try {
-          cards = JSON.parse(cards);
-        } catch (e) {
-          cards = [];
-        }
+      let cards: any[] = [];
+      try {
+        cards = data?.description ? [{ question: 'Event Overview', answer: data.description }] : [];
+      } catch (e) {
+        cards = [];
       }
       setSelectedBook((prev: any) => {
         if (!prev || prev.id !== book.id) return prev;
@@ -988,7 +926,7 @@ export const AdminPanel: React.FC = () => {
       // 3. If approved, apply consequences
       if (action === "approve") {
         const { data: user } = await supabase
-          .from("users")
+          .from("profiles")
           .select("email")
           .eq("id", pv.user_id)
           .maybeSingle();
@@ -1017,20 +955,20 @@ export const AdminPanel: React.FC = () => {
 
             try {
               const { data: existingEpic } = await supabase
-                .from("ebook_purchases")
+                .from("event_tickets")
                 .select("*")
                 .eq("user_id", pv.user_id)
-                .eq("ebook_id", pv.reference_id)
+                .eq("event_id", pv.reference_id)
                 .maybeSingle();
 
               if (!existingEpic) {
-                await supabase.from("ebook_purchases").insert({
+                await supabase.from("event_tickets").insert({
                   user_id: pv.user_id,
-                  ebook_id: pv.reference_id
+                  event_id: pv.reference_id
                 });
               }
             } catch (e: any) {
-              console.warn("ebook_purchases double-grant insert failed:", e);
+              console.warn("event_tickets double-grant insert failed:", e);
             }
           }
         }
@@ -1108,8 +1046,9 @@ export const AdminPanel: React.FC = () => {
 
       if (action === "approve") {
         const { error: userErr } = await supabase
-          .from("users")
+          .from("profiles")
           .update({
+            app_role: "event_host",
             account_tier: "author",
             is_approved_author: true
           })
@@ -1127,17 +1066,19 @@ export const AdminPanel: React.FC = () => {
   const handleUserAction = async (userId: string, action: string, value: any) => {
     try {
       let updateData: any = {};
-      let targetTable = "users";
+      let targetTable = "profiles";
 
       if (action === "toggle_admin") {
         updateData.is_admin = !!value;
+        if (value) updateData.app_role = 'admin';
       } else if (action === "toggle_premium") {
         updateData.is_premium = !!value;
+        updateData.is_vip = !!value;
       } else if (action === "toggle_suspend") {
         updateData.is_suspended = !!value;
       } else if (action === "toggle_book_suspend") {
-        updateData.status = value ? -2 : 1;
-        targetTable = "books";
+        updateData.status = value ? 'archived' : 'published';
+        targetTable = "events";
       }
 
       const { error } = await supabase
@@ -1258,7 +1199,7 @@ export const AdminPanel: React.FC = () => {
   const handlePromoteDemote = async (userId: string, targetTier: string, duration?: number) => {
     try {
       const { data: user } = await supabase
-        .from("users")
+        .from("profiles")
         .select("email")
         .eq("id", userId)
         .maybeSingle();
@@ -1279,20 +1220,25 @@ export const AdminPanel: React.FC = () => {
       const updates: any = { account_tier: targetTier };
       if (targetTier === 'premium') {
         updates.is_premium = true;
+        updates.is_vip = true;
       } else if (targetTier === 'marketing_partner') {
         updates.role = 'marketing_partner';
         updates.account_tier = 'marketing_partner';
+        updates.app_role = 'mpr';
       } else if (targetTier === 'author') {
         updates.is_approved_author = true;
+        updates.app_role = 'event_host';
       } else if (targetTier === 'free') {
         updates.is_premium = false;
         updates.role = 'user';
+        updates.app_role = 'guest';
       } else if (targetTier === 'admin') {
         updates.is_admin = true;
+        updates.app_role = 'admin';
       }
 
       const { error: updateErr } = await supabase
-        .from("users")
+        .from("profiles")
         .update(updates)
         .eq("id", userId);
 
@@ -1328,8 +1274,8 @@ export const AdminPanel: React.FC = () => {
       setIsActivityLoading(true);
       
       const [userRes, booksRes, transRes, applyRes] = await Promise.all([
-        supabase.from("users").select("*").eq("id", userId).maybeSingle(),
-        supabase.from("books").select("*").eq("user_id", userId),
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase.from("events").select("*").eq("created_by", userId),
         supabase
           .from("transactions")
           .select("*")
@@ -2723,7 +2669,7 @@ export const AdminPanel: React.FC = () => {
                                  const userIdentifierStr = unlockForm.userIdentifier.trim();
                                  const bookIdStr = unlockForm.bookId;
 
-                                 let userQuery = supabase.from("users").select("id, email, full_name");
+                                 let userQuery = supabase.from("profiles").select("id, email, full_name");
                                  if (userIdentifierStr.includes("@")) {
                                    userQuery = userQuery.eq("email", userIdentifierStr);
                                  } else {
@@ -2735,9 +2681,7 @@ export const AdminPanel: React.FC = () => {
                                    throw new Error("User not found. Check if the provided Email or ID is accurate.");
                                  }
 
-                                 const { data: bookData, error: bookError } = await supabase
-                                   .from("books")
-                                   .select("id, title, price")
+                                 const { data: bookData, error: bookError } = await supabase.from("events").select("id, title")
                                    .eq("id", bookIdStr)
                                    .maybeSingle();
                                  if (bookError || !bookData) {
@@ -2773,17 +2717,11 @@ export const AdminPanel: React.FC = () => {
 
                                  try {
                                    const { data: existingEpic } = await supabase
-                                     .from("ebook_purchases")
-                                     .select("*")
-                                     .eq("user_id", userData.id)
-                                     .eq("ebook_id", bookIdStr)
+                                     .from("event_tickets").select("*").eq("user_id", userData.id).eq("event_id", bookIdStr)
                                      .maybeSingle();
 
                                    if (!existingEpic) {
-                                      await supabase.from("ebook_purchases").insert({
-                                        user_id: userData.id,
-                                        ebook_id: bookIdStr
-                                      });
+                                      await supabase.from("event_tickets").insert({ user_id: userData.id, event_id: bookIdStr });
                                    }
                                  } catch (e: any) {
                                    console.warn("ebook_purchases insert failed:", e);

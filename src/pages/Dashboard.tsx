@@ -357,50 +357,21 @@ export const Dashboard: React.FC = () => {
       let dbBooks: any[] | null = null;
       let dbError: any = null;
 
-      // Multi-step self-healing sequence to fetch published books.
-      // 1. Direct fast query to fetch published books
-      let resQuery = await supabase
-        .from("books")
+      // EVEX: Query published events directly from 'events' table
+      const resQuery = await supabase
+        .from("events")
         .select("*")
-        .or("is_published.eq.1,status.eq.1")
+        .eq("status", "published")
         .order("created_at", { ascending: false });
-
-      // 2. Broad fallback: Fetch books without a DB filter if the specific query fails
-      if (resQuery.error || !resQuery.data || resQuery.data.length === 0) {
-        console.warn(
-          "[Dashboard] Direct query for published books failed or empty, using broad fallback:",
-          resQuery.error,
-        );
-        resQuery = await supabase
-          .from("books")
-          .select("*")
-          .order("created_at", { ascending: false });
-      }
 
       if (resQuery.error) {
         console.error(
-          "[Dashboard] Direct fetch failed critically:",
+          "[Dashboard] Direct events fetch error:",
           resQuery.error,
         );
         dbError = resQuery.error;
       } else {
-        dbBooks = resQuery.data;
-      }
-
-      if (dbError || !dbBooks || dbBooks.length === 0) {
-        console.warn(
-          "[Dashboard] Direct fetch error or empty, falling back to API:",
-          dbError,
-        );
-        const { data } = await axios.get(
-          `/api/marketplace/books?t=${Date.now()}`,
-        );
-        books = data?.books || [];
-      } else {
-        console.log(
-          "[Dashboard] Direct fetch succeeded, loaded books:",
-          dbBooks.length,
-        );
+        dbBooks = resQuery.data || [];
         books = dbBooks;
       }
 
@@ -409,11 +380,11 @@ export const Dashboard: React.FC = () => {
       if (user?.id) {
         try {
           const { data: directPurchases, error: dpErr } = await supabase
-            .from("ebook_purchases")
-            .select("ebook_id")
+            .from("event_tickets")
+            .select("event_id")
             .eq("user_id", user.id);
           if (directPurchases && !dpErr) {
-            purchasedIdsArr = directPurchases.map((p: any) => p.ebook_id);
+            purchasedIdsArr = directPurchases.map((p: any) => p.event_id);
           }
         } catch (e) {
           console.warn(
@@ -564,12 +535,11 @@ export const Dashboard: React.FC = () => {
         payVerRes,
       ] = await Promise.all([
         supabase
-          .from("books")
+          .from("events")
           .select(
-            "id, user_id, title, status, is_published, price, pdf_price, created_at, admin_note, public_slug, cover_image",
+            "id, created_by, title, status, cover_image, slug, created_at",
           )
-          .eq("user_id", currentProfileId)
-          .neq("status", -1)
+          .eq("created_by", currentProfileId)
           .order("created_at", { ascending: false }),
         axios
           .get("/api/user/balance", config)
@@ -589,7 +559,7 @@ export const Dashboard: React.FC = () => {
           .eq("user_id", currentProfileId)
           .order("created_at", { ascending: false }),
         supabase
-          .from("payment_verifications")
+          .from("payment_disputes")
           .select("*")
           .eq("user_id", currentProfileId)
           .order("created_at", { ascending: false }),
@@ -601,8 +571,8 @@ export const Dashboard: React.FC = () => {
           is_suspended:
             b.is_suspended === true ||
             b.is_suspended === 1 ||
-            b.status === -2 ||
-            b.status === "-2",
+            b.status === "archived" ||
+            b.status === "cancelled",
         }));
         setBooks(normalized);
       }
@@ -611,11 +581,11 @@ export const Dashboard: React.FC = () => {
       if (pIds.length === 0) {
         try {
           const { data: directPurchases } = await supabase
-            .from("ebook_purchases")
-            .select("ebook_id")
+            .from("event_tickets")
+            .select("event_id")
             .eq("user_id", currentProfileId);
           if (directPurchases) {
-            pIds = directPurchases.map((p: any) => p.ebook_id);
+            pIds = directPurchases.map((p: any) => p.event_id);
           }
         } catch (e) {
           console.warn("[Dashboard] Direct purchases check error", e);
@@ -626,17 +596,15 @@ export const Dashboard: React.FC = () => {
         setPurchasedBookIds(new Set(pIds));
         try {
           const { data: details, error: dErr } = await supabase
-            .from("books")
+            .from("events")
             .select(
-              "id, title, public_slug, users(id, email, full_name)",
+              "id, title, slug, created_by",
             )
-            .in("id", pIds)
-            .neq("status", -1);
+            .in("id", pIds);
           if (!dErr && details) {
             const mappedDetails = details.map((b: any) => ({
               ...b,
-              author_name:
-                b.users?.full_name || b.author_name || "Verified Author",
+              author_name: "EVEX Host",
             }));
             setPurchasedBooks(mappedDetails);
           }
@@ -717,17 +685,12 @@ export const Dashboard: React.FC = () => {
     const fetchPromos = async () => {
       try {
         const { data: promos } = await supabase
-          .from('trivias')
+          .from('events')
           .select('*')
-          .eq('deleted', false)
-          .eq('status', 'active');
+          .eq('status', 'published')
+          .limit(1);
         if (promos && promos.length > 0) {
-          const generalPromos = promos.filter((p: any) => !p.book_id && p.is_active !== false);
-          if (generalPromos.length > 0) {
-            setActivePromo(generalPromos[0]);
-          } else {
-            setActivePromo(promos[0]);
-          }
+          setActivePromo(promos[0]);
         }
       } catch (err) {
         console.warn("Failed to fetch promos", err);
@@ -791,7 +754,7 @@ export const Dashboard: React.FC = () => {
 
       if (!deleted) {
         const { error } = await supabase
-          .from("books")
+          .from("events")
           .delete()
           .eq("id", bookToDelete.id);
         if (!error) {
@@ -799,8 +762,8 @@ export const Dashboard: React.FC = () => {
         } else {
           console.warn("[Dashboard] Direct delete failed, trying soft delete fallback...", error);
           const { error: softErr } = await supabase
-            .from("books")
-            .update({ status: -1, is_published: 0 })
+            .from("events")
+            .update({ status: 'archived' })
             .eq("id", bookToDelete.id);
           if (!softErr) {
             deleted = true;

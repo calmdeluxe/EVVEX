@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const PLACEHOLDER_URL = 'https://wgdcroglmhzmrvqrixku.supabase.co';
-const PLACEHOLDER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZGNyb2dsbWh6bXJ2cXJpeGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTMxMjIsImV4cCI6MjA5MTc2OTEyMn0.zmWG2K3OpU25wSDBOSmKnpFHUABNtRklAzCg-f5VYic';
+const PLACEHOLDER_URL = 'https://arbwwbbqpncqxekbttoi.supabase.co';
+const PLACEHOLDER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyYnd3YmJxcG5jcXhla2J0dG9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNDk3ODksImV4cCI6MjA5NTkyNTc4OX0.cJY1MkYZGGypJ_XqvHFPHHpeqXbI3CP-tSkA4dL4yQY';
 
 // Initialize with placeholder but will be re-initialized below
 // We keep the logic below to ensure it only happens once.

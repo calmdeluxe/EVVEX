@@ -74,7 +74,7 @@ export const AdminMprMonitoring: React.FC = () => {
     try {
       // 1. Fetch MPR users
       const { data: rawUsers, error: usersErr } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, email, full_name, username, account_tier, role, mpr_code, mpr_commission_rate, total_mpr_earnings, pending_mpr_earnings, bank_name, account_number, account_name, created_at, is_suspended, status')
         .or('account_tier.eq.marketing_partner,account_tier.eq.mpr,role.eq.marketing_partner,mpr_code.not.is.null')
         .order('created_at', { ascending: false });
@@ -89,7 +89,7 @@ export const AdminMprMonitoring: React.FC = () => {
       let allRecruits: any[] = [];
       if (mprCodes.length > 0 || mprIds.length > 0) {
         const { data: recruitsData } = await supabase
-          .from('users')
+          .from('profiles')
           .select('id, email, full_name, username, referred_by, account_tier, role, created_at')
           .or(`referred_by.in.(${mprCodes.join(',')}),referred_by.in.(${mprIds.join(',')})`);
         allRecruits = recruitsData || [];
@@ -97,13 +97,13 @@ export const AdminMprMonitoring: React.FC = () => {
 
       const recruitIds = allRecruits.map(r => r.id);
 
-      // 3. Fetch all books published by these recruits
+      // 3. Fetch all events published by these recruits
       let allBooks: any[] = [];
       if (recruitIds.length > 0) {
         const { data: booksData } = await supabase
-          .from('books')
-          .select('id, title, user_id, author_name, price, sales_count, status, created_at')
-          .in('user_id', recruitIds);
+          .from('events')
+          .select('id, title, created_by, status, created_at')
+          .in('created_by', recruitIds);
         allBooks = booksData || [];
       }
 
@@ -173,11 +173,12 @@ export const AdminMprMonitoring: React.FC = () => {
     try {
       const code = mpr.mpr_code || `MPR-${mpr.id.substring(0, 6).toUpperCase()}`;
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           status: 'active',
           is_suspended: false,
           account_tier: 'marketing_partner',
+          app_role: 'mpr',
           mpr_code: code
         })
         .eq('id', mpr.id);
@@ -197,7 +198,7 @@ export const AdminMprMonitoring: React.FC = () => {
     const isSuspended = newStatus === 'suspended';
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           status: newStatus,
           is_suspended: isSuspended
@@ -233,9 +234,9 @@ export const AdminMprMonitoring: React.FC = () => {
       const currentTotal = payoutModalMpr.total_earnings || 0;
       const newPending = Math.max(0, currentPending - amount);
 
-      // 1. Update user's pending MPR earnings in users table
+      // 1. Update user's pending MPR earnings in profiles table
       const { error: updateErr } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           pending_mpr_earnings: newPending
         })
