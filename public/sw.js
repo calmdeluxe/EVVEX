@@ -1,4 +1,4 @@
-const CACHE_NAME = 'calmreader-cache-v1';
+const CACHE_NAME = 'evex-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
