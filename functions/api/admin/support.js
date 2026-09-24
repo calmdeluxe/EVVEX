@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyAdminAccess } from '../_adminAuth.js';
 
 export async function onRequest(context) {
   const corsHeaders = {
@@ -55,31 +56,13 @@ export async function onRequest(context) {
     }
 
     // Check database profile for admin permission
-    let profile = null;
-    const { data: profileData } = await supabase
+    const { data: profile } = await supabase
       .from("users")
-      .select("*")
+      .select("is_admin, account_tier, role, app_role")
       .eq("id", user.id)
       .maybeSingle();
-    profile = profileData;
 
-    const ADMIN_EMAILS = ["samuelchukwuemeke05@gmail.com"];
-
-    if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
-      if (!profile) {
-        profile = {
-          id: user.id,
-          email: user.email,
-          is_admin: true,
-          account_tier: "admin",
-        };
-      } else {
-        profile.is_admin = true;
-        profile.account_tier = "admin";
-      }
-    }
-
-    const isAdmin = !!profile?.is_admin && ADMIN_EMAILS.includes(user.email?.toLowerCase());
+    const isAdmin = verifyAdminAccess(user, profile);
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Access denied. Admins only." }), {
         status: 403,

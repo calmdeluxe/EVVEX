@@ -2662,10 +2662,10 @@ export const CreateBook: React.FC = () => {
                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight italic">
-                    {contentType === 'ebook' ? 'Card Architecture & Layout' : contentType === 'blog' ? 'Blog Sections Preview & Editor' : 'Video & Notes Preview Editor'}
+                    {contentType === 'ebook' ? 'Card Architecture & Layout' : 'Event Highlights & Ticket Tiers'}
                   </h2>
                   <p className="text-slate-500 font-medium text-xs mt-0.5">
-                    {contentType === 'ebook' ? 'Modify text, manage images, reorder cards, or insert new cards anywhere.' : 'Preview and fine-tune your blog post cards before publishing.'}
+                    {contentType === 'ebook' ? 'Modify text, manage images, reorder cards, or insert new cards anywhere.' : 'Preview and fine-tune your event highlights and ticket tiers before publishing.'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

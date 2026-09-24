@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyAdminAccess } from '../_adminAuth.js';
 
 export async function onRequest(context) {
   const corsHeaders = {
@@ -46,19 +47,18 @@ export async function onRequest(context) {
 
     const { data: profile } = await supabase
       .from('users')
-      .select('account_tier, is_admin, is_premium')
+      .select('account_tier, is_admin, is_premium, role, app_role')
       .eq('id', user.id)
       .maybeSingle();
 
-    const lowerEmail = (user.email || '').toLowerCase();
-    const isAdminEmail = lowerEmail === 'samuelchukwuemeke05@gmail.com' || lowerEmail === 'chukwuemekedaniella@gmail.com';
-    const accountTier = isAdminEmail ? 'admin' : (profile?.account_tier || 'free');
+    const isAdmin = verifyAdminAccess(user, profile);
+    const accountTier = isAdmin ? 'admin' : (profile?.account_tier || 'free');
 
     return new Response(JSON.stringify({
       userId: user.id,
       email: user.email,
       accountTier: accountTier,
-      isAdmin: isAdminEmail || accountTier === 'admin'
+      isAdmin: isAdmin
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders }

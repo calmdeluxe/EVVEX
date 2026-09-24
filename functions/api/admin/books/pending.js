@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyAdminAccess } from '../../_adminAuth.js';
 
 export async function onRequest(context) {
   const corsHeaders = {
@@ -64,20 +65,14 @@ export async function onRequest(context) {
       });
     }
 
-    // Check admin status by email list or users table role
-    const ADMIN_EMAILS = [
-      "samuelchukwuemeke05@gmail.com",
-      "chukwuemekedaniella@gmail.com"
-    ];
-    const isEmailAdmin = user.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
-
+    // Check admin status via centralized authorization helper and users table role
     const { data: profile } = await supabase
       .from("users")
-      .select("is_admin, account_tier, role")
+      .select("is_admin, account_tier, role, app_role")
       .eq("id", user.id)
       .maybeSingle();
 
-    const isAdmin = isEmailAdmin || profile?.is_admin === true || profile?.account_tier === "admin" || profile?.role === "admin";
+    const isAdmin = verifyAdminAccess(user, profile);
 
     if (!isAdmin) {
       return new Response(JSON.stringify({ books: [], error: "Forbidden: Admin access required." }), {

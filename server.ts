@@ -143,8 +143,8 @@ function adaptSupabaseClient(client: any) {
   if (!client || (client as any).__isAdapted) return client;
   const originalFrom = client.from.bind(client);
   client.from = function (relation: string) {
-    if (relation === "users") {
-      return originalFrom("profiles");
+    if (relation === "profiles") {
+      return originalFrom("users");
     }
     return originalFrom(relation);
   };

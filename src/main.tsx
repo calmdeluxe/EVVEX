@@ -170,12 +170,12 @@ axios.interceptors.response.use(
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}`;
       }
     } else if (status === 403) {
-      // 403 means Forbidden / insufficient tier permissions, NOT unauthenticated session expiration.
-      // Do NOT sign out the user; if attempting to view restricted subpages, redirect to /dashboard.
+      // 403 means Forbidden / insufficient permissions, NOT unauthenticated session expiration.
+      // Do NOT sign out the user, clear session, or destroy auth state.
       const currentPath = window.location.pathname;
       if (currentPath.startsWith('/mpr') || currentPath.startsWith('/admin')) {
-        console.warn(`[Axios Interceptor] 403 Forbidden access on ${error.config?.url}. Redirecting to /dashboard.`);
-        window.location.href = '/dashboard';
+        console.warn(`[Axios Interceptor] 403 Forbidden access on ${error.config?.url}. Redirecting to /unauthorized.`);
+        window.location.href = '/unauthorized';
       }
     }
     return Promise.reject(error);
@@ -333,16 +333,25 @@ try {
       }
 
       const response = await originalFetch(input, init);
-      if (isApiCall && (response.status === 401 || response.status === 403)) {
-        const publicAuthPages = ['/login', '/signup', '/auth', '/forgot-password', '/book', '/ebook', '/direct-checkout'];
-        const currentPath = window.location.pathname;
-        if (!publicAuthPages.some(p => currentPath.startsWith(p))) {
-          console.warn(`[Fetch Interceptor] 401/403 Auth error on ${urlStr}. Redirecting to /login...`);
-          try {
-            await supabase.auth.signOut();
-            sessionStorage.clear();
-          } catch (e) {}
-          window.location.href = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}`;
+      if (isApiCall) {
+        if (response.status === 401) {
+          const publicAuthPages = ['/login', '/signup', '/auth', '/forgot-password', '/book', '/ebook', '/direct-checkout'];
+          const currentPath = window.location.pathname;
+          if (!publicAuthPages.some(p => currentPath.startsWith(p))) {
+            console.warn(`[Fetch Interceptor] 401 Auth error on ${urlStr}. Redirecting to /login...`);
+            try {
+              await supabase.auth.signOut();
+              sessionStorage.clear();
+            } catch (e) {}
+            window.location.href = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}`;
+          }
+        } else if (response.status === 403) {
+          // 403 Forbidden: Authenticated user lacks permission. Never sign out or clear session.
+          console.warn(`[Fetch Interceptor] 403 Forbidden access on ${urlStr}. Preserving authentication state.`);
+          const currentPath = window.location.pathname;
+          if (currentPath.startsWith('/mpr') || currentPath.startsWith('/admin')) {
+            window.location.href = '/unauthorized';
+          }
         }
       }
       return response;
@@ -376,16 +385,25 @@ try {
       }
     }
     const response = await originalFetch(input, init);
-    if (isApiCall && (response.status === 401 || response.status === 403)) {
-      const publicAuthPages = ['/login', '/signup', '/auth', '/forgot-password', '/book', '/ebook', '/direct-checkout'];
-      const currentPath = window.location.pathname;
-      if (!publicAuthPages.some(p => currentPath.startsWith(p))) {
-        console.warn(`[Fallback Fetch Interceptor] 401/403 Auth error on ${urlStr}. Redirecting to /login...`);
-        try {
-          await supabase.auth.signOut();
-          sessionStorage.clear();
-        } catch (e) {}
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}`;
+    if (isApiCall) {
+      if (response.status === 401) {
+        const publicAuthPages = ['/login', '/signup', '/auth', '/forgot-password', '/book', '/ebook', '/direct-checkout'];
+        const currentPath = window.location.pathname;
+        if (!publicAuthPages.some(p => currentPath.startsWith(p))) {
+          console.warn(`[Fallback Fetch Interceptor] 401 Auth error on ${urlStr}. Redirecting to /login...`);
+          try {
+            await supabase.auth.signOut();
+            sessionStorage.clear();
+          } catch (e) {}
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}`;
+        }
+      } else if (response.status === 403) {
+        // 403 Forbidden: Authenticated user lacks permission. Never sign out or clear session.
+        console.warn(`[Fallback Fetch Interceptor] 403 Forbidden access on ${urlStr}. Preserving authentication state.`);
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/mpr') || currentPath.startsWith('/admin')) {
+          window.location.href = '/unauthorized';
+        }
       }
     }
     return response;

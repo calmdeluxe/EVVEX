@@ -352,10 +352,10 @@ export const supabase: SupabaseClient = new Proxy({} as any, {
     if (prop === '__isDummy') {
       return !!activeClient.__isDummy;
     }
-    // Intercept 'users' table queries to transparently route to 'profiles' table
+    // Compatibility Layer: safely route any legacy or mismatched 'profiles' requests to the active 'users' table
     if (prop === 'from') {
       return function(relation: string, ...args: any[]) {
-        const targetRel = relation === 'users' ? 'profiles' : relation;
+        const targetRel = relation === 'profiles' ? 'users' : relation;
         return activeClient.from(targetRel, ...args);
       };
     }

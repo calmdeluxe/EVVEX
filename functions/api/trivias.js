@@ -39,9 +39,9 @@ export async function onRequest(context) {
           userId = user.id;
           userEmail = user.email;
 
-          // Fetch profile to get real account tier
+          // Fetch profile to get real account tier from active users table
           const { data: profile } = await supabase
-            .from("profiles")
+            .from("users")
             .select("account_tier")
             .eq("id", userId)
             .maybeSingle();
