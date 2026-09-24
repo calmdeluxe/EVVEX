@@ -1,73 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { AdminLayout } from '../components/AdminLayout';
 import { supabase } from '../supabase';
-import axios from 'axios';
-import { DashboardLayout } from '../components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { 
-  BookOpen, 
-  CheckCircle2, 
-  XCircle, 
+  Check, 
+  X, 
   Trash2, 
   Eye, 
-  ArrowLeft, 
-  Search, 
-  RefreshCw, 
-  Loader2, 
-  Edit3, 
+  Calendar, 
+  MapPin, 
   Clock, 
-  FileText,
-  ShieldAlert
+  Search, 
+  AlertCircle,
+  MessageSquare,
+  Sparkles,
+  Ticket
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export const AdminReviews: React.FC = () => {
-  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('pending_review');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [bookToDelete, setBookToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedBookForPreview, setSelectedBookForPreview] = useState<any | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [selectedEventForPreview, setSelectedEventForPreview] = useState<any | null>(null);
+
+  // Request Changes Modal
+  const [changeModal, setChangeModal] = useState<{ open: boolean; event: any | null; note: string }>({
+    open: false,
+    event: null,
+    note: ''
+  });
 
   const fetchSubmissions = async () => {
     setLoading(true);
     try {
-      // Query books table ensuring cover_image is included
-      const { data: dbBooks, error } = await supabase
-        .from('books')
+      // Query events from Supabase
+      const { data: dbEvents, error } = await supabase
+        .from('events')
         .select('*')
-        .neq('status', -1)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      if (dbBooks) {
-        const userIds = [...new Set(dbBooks.map((v: any) => v.user_id))].filter(Boolean);
+      if (dbEvents) {
+        const organizerIds = [...new Set(dbEvents.map((v: any) => v.organizer_id))].filter(Boolean);
         let userMap: Record<string, any> = {};
-        if (userIds.length > 0) {
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('id, email, full_name')
-            .in('id', userIds);
-          if (usersData) {
-            userMap = usersData.reduce((acc: any, u: any) => {
+        if (organizerIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, email, full_name, username')
+            .in('id', organizerIds);
+          if (profilesData) {
+            userMap = profilesData.reduce((acc: any, u: any) => {
               acc[u.id] = u;
               return acc;
             }, {});
           }
         }
-        const mappedBooks = dbBooks.map((b: any) => ({
-          ...b,
-          users: userMap[b.user_id] || { email: 'Unknown User', full_name: 'Unknown User' }
+        const mappedEvents = dbEvents.map((e: any) => ({
+          ...e,
+          organizer: userMap[e.organizer_id] || { email: 'Unknown Host', full_name: 'Unknown Host' }
         }));
-        setSubmissions(mappedBooks);
+        setSubmissions(mappedEvents);
       }
     } catch (err) {
-      console.error('[AdminReviews] Error fetching submissions:', err);
+      console.error('[AdminReviews] Error fetching events for review:', err);
     } finally {
       setLoading(false);
     }
@@ -77,441 +78,309 @@ export const AdminReviews: React.FC = () => {
     fetchSubmissions();
   }, []);
 
-  const handleBookReview = async (bookId: string, action: 'approve' | 'reject') => {
-    setActionLoading(bookId);
+  const handleEventReview = async (eventId: string, newStatus: 'published' | 'draft', adminNote?: string) => {
+    setActionLoading(eventId);
     try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      
-      let success = false;
-      if (token) {
-        try {
-          const res = await axios.post(`/api/admin/books/${bookId}/review`, { action }, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.data?.success) success = true;
-        } catch (apiErr) {
-          console.warn('[AdminReviews] API review failed, falling back to direct Supabase update:', apiErr);
-        }
+      const updateData: any = { status: newStatus };
+      if (adminNote !== undefined) {
+        updateData.admin_note = adminNote;
       }
 
-      if (!success) {
-        const updateData = action === 'approve' 
-          ? { is_published: 1, status: 1 }
-          : { is_published: 0, status: 'rejected' };
-        
-        const { error } = await supabase
-          .from('books')
-          .update(updateData)
-          .eq('id', bookId);
+      const { error } = await supabase
+        .from('events')
+        .update(updateData)
+        .eq('id', eventId);
 
-        if (error) throw error;
-        success = true;
-      }
+      if (error) throw error;
 
-      if (success) {
-        alert(`eBook successfully ${action === 'approve' ? 'approved and published' : 'rejected'}!`);
-        fetchSubmissions();
-      }
+      // Log into admin_audit_log
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'event_moderation',
+          severity: 'audit',
+          action: newStatus === 'published' ? 'event_approved' : 'event_rejected',
+          target_type: 'event',
+          target_id: eventId,
+          metadata: { new_status: newStatus, admin_note: adminNote || null }
+        });
+      } catch (e) {}
+
+      alert(`Event status updated to "${newStatus.toUpperCase()}"!`);
+      fetchSubmissions();
     } catch (err: any) {
-      alert(`Error updating review status: ${err.message || 'Action failed'}`);
+      alert(`Error updating event review: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+      if (changeModal.open) {
+        setChangeModal({ open: false, event: null, note: '' });
+      }
+    }
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    setActionLoading(eventToDelete.id);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ status: 'cancelled' })
+        .eq('id', eventToDelete.id);
+
+      if (error) throw error;
+
+      // Log into admin_audit_log
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'event_moderation',
+          severity: 'audit',
+          action: 'event_cancelled',
+          target_type: 'event',
+          target_id: eventToDelete.id,
+          metadata: { title: eventToDelete.title }
+        });
+      } catch (e) {}
+
+      alert('Event successfully cancelled.');
+      setEventToDelete(null);
+      fetchSubmissions();
+    } catch (err: any) {
+      alert(`Error cancelling event: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
-  const confirmDeleteBook = async () => {
-    if (!bookToDelete) return;
-    setDeletingId(bookToDelete.id);
-    let deleted = false;
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      if (token) {
-        try {
-          const res = await axios.delete(`/api/books/${bookToDelete.id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.data?.success) deleted = true;
-        } catch (apiErr) {
-          console.warn('[AdminReviews] Axios delete failed, trying direct Supabase fallback...', apiErr);
-        }
-      }
-
-      if (!deleted) {
-        const { error } = await supabase
-          .from('books')
-          .delete()
-          .eq('id', bookToDelete.id);
-
-        if (!error) {
-          deleted = true;
-        } else {
-          console.warn('[AdminReviews] Direct delete failed, trying soft delete fallback...', error);
-          const { error: softErr } = await supabase
-            .from('books')
-            .update({ status: -1, is_published: 0 })
-            .eq('id', bookToDelete.id);
-          if (!softErr) deleted = true;
-          else throw error;
-        }
-      }
-
-      if (deleted) {
-        alert('eBook deleted successfully!');
-        setSubmissions(prev => prev.filter(b => String(b.id) !== String(bookToDelete.id)));
-        setBookToDelete(null);
-        fetchSubmissions();
-      }
-    } catch (err: any) {
-      alert(`Error deleting eBook: ${err.message || 'Failed to delete'}`);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const pendingSubmissions = submissions.filter(b => {
-    const isPending = b.status === 0 || b.status === 2 || b.status === 'pending_review' || b.status === 'pending' || b.is_published === 0;
+  const filteredEvents = submissions.filter(e => {
     const matchesSearch = 
-      b.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      b.users?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return isPending && matchesSearch;
+      e.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.organizer?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.organizer?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.venue_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (filterStatus === 'all') return true;
+    return e.status === filterStatus;
   });
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8 pb-20">
-        {/* Header Navigation */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate('/admin')}
-              className="rounded-2xl h-11 w-11 border-slate-200 hover:bg-slate-50"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-700" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                eBook Submissions Review
-                <Badge className="bg-amber-500 text-white border-none font-extrabold text-xs">
-                  {pendingSubmissions.length} PENDING
-                </Badge>
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Review submitted eBooks with cover thumbnails, approve, decline or manage content.
-              </p>
-            </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <Ticket className="w-8 h-8 text-indigo-600" />
+            Event Submissions & Moderation
+          </h1>
+          <p className="text-slate-500 font-medium mt-1">
+            Review host submissions, approve events for the public directory, or request modifications.
+          </p>
+        </div>
+
+        {/* Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <Input 
+              placeholder="Search title, venue, or host..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-11 rounded-2xl border-slate-200"
+            />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={fetchSubmissions}
-              disabled={loading}
-              variant="outline"
-              className="rounded-2xl h-11 px-4 gap-2 border-slate-200 text-slate-700 font-bold text-xs"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Queue
-            </Button>
+          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+            {['pending_review', 'published', 'draft', 'cancelled', 'all'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                  filterStatus === status 
+                    ? 'bg-slate-900 text-white shadow-md' 
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                {status.replace('_', ' ')}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative max-w-md">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="Search by title, author name or email..."
-            className="pl-11 h-12 rounded-2xl border-slate-200 bg-white shadow-xs font-medium text-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        {/* Review List */}
+        {/* Events List */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-            <p className="text-sm font-bold">Loading submissions for review...</p>
+          <div className="p-12 text-center text-slate-400 font-bold">Loading submissions from database...</div>
+        ) : filteredEvents.length === 0 ? (
+          <div className="p-12 text-center bg-white rounded-3xl border border-slate-100">
+            <Sparkles className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-slate-500 font-bold">No events matching status filter "{filterStatus}".</p>
           </div>
-        ) : pendingSubmissions.length === 0 ? (
-          <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 p-12 text-center rounded-[2.5rem]">
-            <CardContent className="space-y-4 p-0">
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xs">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-800">All Reviews Up To Date</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">
-                  There are no pending eBook submissions waiting for review right now.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {pendingSubmissions.map((book) => {
-              const contentType = book.admin_note?.includes('type:')
-                ? book.admin_note.split('type:')[1].split(',')[0]
-                : 'ebook';
-
-              return (
-                <Card
-                  key={book.id}
-                  className="border-slate-200/80 shadow-xs hover:shadow-md transition-all rounded-[2rem] overflow-hidden bg-white p-6"
-                >
-                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                    {/* Cover Thumbnail & Details */}
-                    <div className="flex items-start gap-5 min-w-0 flex-1">
-                      {/* Cover Thumbnail Box */}
-                      <div className="w-24 sm:w-28 aspect-[3/4] relative overflow-hidden shrink-0 rounded-2xl shadow-md bg-slate-100 border border-slate-200 flex items-center justify-center p-1 group">
-                        {book.cover_image ? (
-                          <img
-                            src={book.cover_image}
-                            alt={book.title || 'eBook Cover'}
-                            className="w-full h-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
-                            referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              // Fallback on image load error
-                              (e.target as HTMLElement).style.display = 'none';
-                              const parent = (e.target as HTMLElement).parentElement;
-                              if (parent) {
-                                const fallback = document.createElement('div');
-                                fallback.className = 'flex flex-col items-center justify-center text-slate-400 p-2 text-center';
-                                fallback.innerHTML = '<svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg><span class="text-[9px] font-bold">No Image</span>';
-                                parent.appendChild(fallback);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-slate-400 p-2 text-center">
-                            <BookOpen className="w-8 h-8 mb-1 text-slate-400" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                              No Cover
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Details */}
-                      <div className="space-y-2.5 min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className="bg-indigo-600 text-white font-black text-[9px] uppercase px-2 py-0.5">
-                            {contentType.toUpperCase()}
-                          </Badge>
-                          <Badge className="bg-amber-100 text-amber-800 border-amber-200 font-extrabold text-[9px] uppercase px-2 py-0.5">
-                            {book.status === 2 || book.status === 'pending_review'
-                              ? 'SUBMITTED FOR REVIEW'
-                              : 'DRAFT/PENDING'}
-                          </Badge>
-                        </div>
-
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight leading-snug">
-                          {book.title}
-                        </h3>
-
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-slate-500">
-                          <span>
-                            Author:{' '}
-                            <strong className="text-slate-800">
-                              {book.users?.full_name || book.users?.email || 'Unknown'}
-                            </strong>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Price:{' '}
-                            <strong className="text-emerald-600 font-black">
-                              {book.price && Number(book.price) > 0
-                                ? `₦${Number(book.price).toLocaleString()}`
-                                : 'FREE'}
-                            </strong>
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1 font-mono text-[11px]">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            {book.created_at
-                              ? new Date(book.created_at).toLocaleDateString()
-                              : 'N/A'}
-                          </span>
-                        </div>
-
-                        {book.description && (
-                          <p className="text-xs text-slate-600 line-clamp-2 font-normal leading-relaxed">
-                            {book.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Controls */}
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full lg:w-auto pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                      <Button
-                        disabled={actionLoading === book.id}
-                        onClick={() => handleBookReview(book.id, 'approve')}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl h-10 px-4 text-xs gap-1.5 shadow-sm flex-1 sm:flex-initial"
-                      >
-                        {actionLoading === book.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4" />
-                        )}
-                        Approve
-                      </Button>
-
-                      <Button
-                        disabled={actionLoading === book.id}
-                        variant="outline"
-                        onClick={() => handleBookReview(book.id, 'reject')}
-                        className="border-red-200 text-red-600 hover:bg-red-50 font-extrabold rounded-xl h-10 px-4 text-xs gap-1.5 flex-1 sm:flex-initial"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Decline
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedBookForPreview(book)}
-                        className="border-slate-200 text-indigo-600 hover:bg-indigo-50 font-extrabold rounded-xl h-10 px-3 text-xs gap-1.5"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Preview
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => navigate(`/edit/${book.id}`)}
-                        className="border-slate-200 text-slate-700 hover:bg-slate-50 font-extrabold rounded-xl h-10 px-3 text-xs gap-1.5"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        Edit
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        onClick={() =>
-                          setBookToDelete({ id: book.id, title: book.title || 'this eBook' })
-                        }
-                        className="text-red-500 hover:bg-red-50 hover:text-red-700 h-10 w-10 p-0 rounded-xl"
-                        title="Delete Submitted eBook"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredEvents.map((evt) => (
+              <div 
+                key={evt.id} 
+                className="bg-white rounded-[28px] border border-slate-100 p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all"
+              >
+                <div className="space-y-4">
+                  {/* Status & Date */}
+                  <div className="flex items-center justify-between">
+                    <Badge className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${
+                      evt.status === 'published' 
+                        ? 'bg-emerald-100 text-emerald-800' 
+                        : evt.status === 'pending_review' 
+                        ? 'bg-amber-100 text-amber-800 animate-pulse' 
+                        : evt.status === 'cancelled'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {evt.status || 'draft'}
+                    </Badge>
+                    <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {new Date(evt.created_at).toLocaleDateString()}
+                    </span>
                   </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Delete Modal */}
-        {bookToDelete && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900">Delete eBook Submission</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Are you sure you want to delete <strong className="text-slate-800">"{bookToDelete.title}"</strong>? This will permanently remove it from the database.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setBookToDelete(null)}
-                  className="flex-1 rounded-xl h-11 font-bold text-xs border-slate-200"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  disabled={!!deletingId}
-                  onClick={confirmDeleteBook}
-                  className="flex-1 rounded-xl h-11 font-bold text-xs bg-red-600 hover:bg-red-700 text-white gap-2"
-                >
-                  {deletingId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  Delete Permanently
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+                  {/* Title & Organizer */}
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 line-clamp-1">{evt.title}</h3>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">
+                      Host: {evt.organizer?.full_name || evt.organizer?.email || 'Unknown'}
+                    </p>
+                  </div>
 
-        {/* Preview Modal */}
-        {selectedBookForPreview && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-6">
-              <div className="flex items-center justify-between border-b pb-4">
-                <h3 className="text-lg font-black text-slate-900">Content Preview</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedBookForPreview(null)}
-                  className="rounded-full w-8 h-8 p-0"
-                >
-                  ✕
-                </Button>
-              </div>
+                  {/* Venue & Time */}
+                  <div className="space-y-1 text-xs text-slate-600 font-medium">
+                    {evt.venue_name && (
+                      <p className="flex items-center gap-1.5 truncate">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        {evt.venue_name}
+                      </p>
+                    )}
+                    {evt.start_time && (
+                      <p className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        {new Date(evt.start_time).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
 
-              <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className="w-32 aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 shrink-0 border shadow-md">
-                  {selectedBookForPreview.cover_image ? (
-                    <img
-                      src={selectedBookForPreview.cover_image}
-                      className="w-full h-full object-cover"
-                      alt={selectedBookForPreview.title}
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                      <BookOpen className="w-8 h-8" />
-                      <span className="text-[10px] font-bold mt-1">No Cover</span>
-                    </div>
+                  {/* Description preview */}
+                  {evt.description && (
+                    <p className="text-xs text-slate-500 line-clamp-2 italic">
+                      "{evt.description}"
+                    </p>
                   )}
                 </div>
 
-                <div className="space-y-3 flex-1">
-                  <h2 className="text-xl font-black text-slate-900">
-                    {selectedBookForPreview.title}
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Author Email: {selectedBookForPreview.users?.email || 'N/A'}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Price: ₦{selectedBookForPreview.price || '0'}
-                  </p>
-                  <div className="pt-2">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase mb-1">Description:</h4>
-                    <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
-                      {selectedBookForPreview.description || 'No description provided.'}
-                    </p>
+                {/* Action Buttons */}
+                <div className="pt-6 border-t border-slate-50 mt-6 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      size="sm"
+                      onClick={() => handleEventReview(evt.id, 'published')}
+                      disabled={actionLoading === evt.id || evt.status === 'published'}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-9 px-3 font-bold text-xs"
+                    >
+                      <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                    </Button>
+
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setChangeModal({ open: true, event: evt, note: evt.admin_note || '' })}
+                      disabled={actionLoading === evt.id}
+                      className="border-amber-200 text-amber-800 hover:bg-amber-50 rounded-xl h-9 px-3 font-bold text-xs"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 mr-1" /> Changes
+                    </Button>
                   </div>
+
+                  <Button 
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEventToDelete(evt)}
+                    disabled={actionLoading === evt.id}
+                    className="text-red-500 hover:bg-red-50 rounded-xl h-9 px-2.5"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="flex justify-end gap-3 border-t pt-4">
-                <Button
-                  onClick={() => navigate(`/read/${selectedBookForPreview.id}`)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl h-10 px-5"
+        {/* Changes Note Modal */}
+        {changeModal.open && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <h3 className="text-lg font-black text-slate-900">Request Changes / Feedback</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Provide notes to the host for "{changeModal.event?.title}". The event will be placed into "draft" status.
+              </p>
+              <textarea 
+                rows={4}
+                value={changeModal.note}
+                onChange={(e) => setChangeModal({ ...changeModal, note: e.target.value })}
+                placeholder="Specify what needs to be changed before approval..."
+                className="w-full rounded-2xl border border-slate-200 p-3 text-sm focus:ring-indigo-600 font-medium"
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setChangeModal({ open: false, event: null, note: '' })}
+                  className="rounded-xl font-bold"
                 >
-                  Full Reader Mode
+                  Cancel
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedBookForPreview(null)}
-                  className="font-bold text-xs rounded-xl h-10 px-5"
+                <Button 
+                  onClick={() => handleEventReview(changeModal.event.id, 'draft', changeModal.note)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black"
                 >
-                  Close Preview
+                  Submit & Set to Draft
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel/Delete Confirmation Modal */}
+        {eventToDelete && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertCircle className="w-6 h-6" />
+                <h3 className="text-lg font-black text-slate-900">Cancel Event</h3>
+              </div>
+              <p className="text-sm text-slate-600 font-medium">
+                Are you sure you want to cancel <span className="font-bold text-slate-900">"{eventToDelete.title}"</span>?
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setEventToDelete(null)}
+                  className="rounded-xl font-bold"
+                >
+                  No, Keep
+                </Button>
+                <Button 
+                  onClick={confirmDeleteEvent}
+                  className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-black"
+                >
+                  Yes, Cancel Event
                 </Button>
               </div>
             </div>
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </AdminLayout>
   );
 };

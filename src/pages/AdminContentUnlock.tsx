@@ -78,81 +78,46 @@ export const AdminContentUnlock: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      // 1. Fetch available books (excluding non-existent author_name column)
-      const { data: booksData, error: booksErr } = await supabase
-        .from('books')
-        .select('id, title, price, pdf_price, cover_image, user_id, status, is_published, admin_note')
+      // 1. Fetch available events
+      const { data: eventsData, error: eventsErr } = await supabase
+        .from('events')
+        .select('id, title, organizer_id, status, created_at')
         .order('title', { ascending: true });
 
-      if (booksErr) throw booksErr;
+      if (eventsErr) throw eventsErr;
 
-      // 2. Fetch registered authors from backend or supabase
-      let currentAuthors: any[] = [];
-      try {
-        const headers = await getAuthHeaders();
-        const res = await axios.get('/api/admin/authors', headers);
-        if (res.data?.authors) {
-          currentAuthors = res.data.authors;
-          setAuthorsList(res.data.authors);
-        }
-      } catch (authErr) {
-        console.warn("Falling back to direct query for authors:", authErr);
-        const { data: directAuthors } = await supabase
-          .from('users')
-          .select('id, email, full_name, username, account_tier, is_approved_author, is_author')
-          .order('full_name', { ascending: true });
-        if (directAuthors) {
-          currentAuthors = directAuthors;
-          setAuthorsList(directAuthors);
-        }
-      }
+      // 2. Fetch profiles for event hosts and users
+      const { data: profilesData, error: profilesErr } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, username, app_role')
+        .order('full_name', { ascending: true });
 
-      // 3. Fetch users for quick lookup
-      let usersData: any[] = [];
-      let usersErr = null;
-      try {
-        const { data, error } = await supabase
-          .from('user_profiles_public')
-          .select('id, email, full_name, username, account_tier')
-          .order('email', { ascending: true })
-          .limit(200);
-        if (error) throw error;
-        usersData = data || [];
-      } catch (viewErr) {
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, email, full_name, username, account_tier')
-          .order('email', { ascending: true })
-          .limit(200);
-        usersData = data || [];
-        usersErr = error;
-      }
+      if (profilesErr) throw profilesErr;
 
-      if (usersErr) throw usersErr;
-      setUsersList(usersData || []);
+      const userList = profilesData || [];
+      setUsersList(userList);
+      setAuthorsList(userList.filter((u: any) => u.app_role === 'event_host' || u.app_role === 'admin'));
 
       // Build author lookup map by user_id
       const userMap: Record<string, string> = {};
-      [...usersData, ...currentAuthors].forEach((u: any) => {
+      userList.forEach((u: any) => {
         if (u && u.id) {
           userMap[u.id] = u.full_name || u.username || u.email?.split('@')[0] || '';
         }
       });
 
-      const formattedBooks = (booksData || []).map((b: any) => {
-        const penName = b.admin_note?.match(/author:([^,]+)/)?.[1];
-        const userAuthorName = b.user_id ? userMap[b.user_id] : '';
+      const formattedEvents = (eventsData || []).map((b: any) => {
         return {
           ...b,
-          author_name: penName || userAuthorName || 'Verified Author'
+          author_name: b.organizer_id ? userMap[b.organizer_id] || 'Event Host' : 'Verified Host'
         };
       });
 
-      setBooks(formattedBooks);
+      setBooks(formattedEvents);
 
     } catch (err: any) {
       console.error("[AdminContentUnlock] Failed to load data:", err);
-      setError('Failed to populate books or user profiles: ' + (err.message || 'Unknown error'));
+      setError('Failed to populate events or user profiles: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -166,7 +131,7 @@ export const AdminContentUnlock: React.FC = () => {
       return;
     }
     if (!selectedBookId) {
-      setError('Please select an eBook / Content item to unlock.');
+      setError('Please select an event / pass item to unlock.');
       return;
     }
 
@@ -175,42 +140,67 @@ export const AdminContentUnlock: React.FC = () => {
     setSuccess('');
 
     try {
-      const headers = await getAuthHeaders();
-      const payload = {
-        userIdentifier: userIdentifier.trim(),
-        bookId: selectedBookId,
-        amount: manualAmount !== '' ? Number(manualAmount) : undefined,
-        contentType,
-        notes: paymentNotes
-      };
+      const identifier = userIdentifier.trim();
+      let targetUser = usersList.find((u: any) => u.id === identifier || u.email?.toLowerCase() === identifier.toLowerCase());
 
-      const res = await axios.post('/api/admin/books/unlock', payload, headers);
-      if (res.data?.success) {
-        setSuccess(res.data.message || 'Content successfully unlocked for the recipient!');
-        setSelectedBookId('');
-        setUserIdentifier('');
-        setManualAmount('');
-      } else {
-        throw new Error(res.data?.error || 'Failed to complete manual unlock');
+      if (!targetUser) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        const { data: fetchedUser } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .eq(isUuid ? 'id' : 'email', identifier)
+          .maybeSingle();
+
+        if (!fetchedUser) throw new Error(`User not found for identifier: ${identifier}`);
+        targetUser = fetchedUser;
       }
+
+      // Insert into event_tickets
+      const { error: ticketErr } = await supabase.from('event_tickets').insert({
+        user_id: targetUser.id,
+        event_id: selectedBookId,
+        status: 'valid'
+      });
+
+      if (ticketErr) throw ticketErr;
+
+      // Log into admin_audit_log
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'event_moderation',
+          severity: 'audit',
+          action: 'manual_ticket_unlock',
+          target_type: 'event',
+          target_id: selectedBookId,
+          metadata: { user_id: targetUser.id, email: targetUser.email, notes: paymentNotes }
+        });
+      } catch (e) {}
+
+      setSuccess(`Ticket successfully granted to ${targetUser.email}!`);
+      setSelectedBookId('');
+      setUserIdentifier('');
+      setManualAmount('');
     } catch (err: any) {
       console.error("[AdminContentUnlock] Save error:", err);
-      const errMsg = err.response?.data?.error || err.message || 'An error occurred while unlocking';
-      setError(errMsg);
+      setError(err.message || 'An error occurred while unlocking');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Section 2: Handle Reassign Book to Author
+  // Section 2: Handle Reassign Event to Host
   const handleReassign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reassignBookId) {
-      setReassignError('Please select a book to reassign.');
+      setReassignError('Please select an event to reassign.');
       return;
     }
     if (!reassignAuthorId) {
-      setReassignError('Please select the new author who should own this book.');
+      setReassignError('Please select the new host who should own this event.');
       return;
     }
 
@@ -219,32 +209,37 @@ export const AdminContentUnlock: React.FC = () => {
     setReassignSuccess('');
 
     try {
-      const headers = await getAuthHeaders();
-      const payload = {
-        bookId: reassignBookId,
-        newAuthorUserId: reassignAuthorId,
-        authorPenName: reassignPenName.trim() || undefined
-      };
+      const { error: updateErr } = await supabase
+        .from('events')
+        .update({ organizer_id: reassignAuthorId })
+        .eq('id', reassignBookId);
 
-      const res = await axios.post('/api/admin/books/reassign-author', payload, headers);
-      if (res.data?.success) {
-        setReassignSuccess(res.data.message || 'Book successfully reassigned!');
-        
-        // Update local books list
-        const updatedBook = res.data.book;
-        setBooks(prev => prev.map(b => b.id === reassignBookId ? { ...b, ...updatedBook } : b));
-        
-        // Reset selections
-        setReassignBookId('');
-        setReassignAuthorId('');
-        setReassignPenName('');
-      } else {
-        throw new Error(res.data?.error || 'Failed to reassign book');
-      }
+      if (updateErr) throw updateErr;
+
+      // Log into admin_audit_log
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'event_moderation',
+          severity: 'audit',
+          action: 'reassign_event_organizer',
+          target_type: 'event',
+          target_id: reassignBookId,
+          metadata: { new_organizer_id: reassignAuthorId }
+        });
+      } catch (e) {}
+
+      setReassignSuccess('Event successfully reassigned to new host!');
+      setBooks(prev => prev.map(b => b.id === reassignBookId ? { ...b, organizer_id: reassignAuthorId } : b));
+      setReassignBookId('');
+      setReassignAuthorId('');
+      setReassignPenName('');
     } catch (err: any) {
       console.error("[AdminContentUnlock] Reassign error:", err);
-      const errMsg = err.response?.data?.error || err.message || 'Failed to reassign book';
-      setReassignError(errMsg);
+      setReassignError(err.message || 'Failed to reassign event');
     } finally {
       setReassigning(false);
     }

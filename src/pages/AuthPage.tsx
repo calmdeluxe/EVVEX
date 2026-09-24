@@ -125,7 +125,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
   const testConnection = async () => {
     setTestingConnection(true);
     try {
-      const { error } = await supabase.from('users').select('id').limit(1);
+      const { error } = await supabase.from('profiles').select('id').limit(1);
       if (error && error.message.includes('fetch')) throw error;
       setMessage('Connection to Supabase is active! Your network is working correctly.');
     } catch (err: any) {
@@ -274,11 +274,13 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
       localStorage.removeItem('pendingPurchaseEbookId');
 
       // Fetch user profile from Database to perform strict security checks
-      const { data: profile } = await supabase
-        .from('users')
-        .select('account_tier, is_suspended, is_admin, is_premium')
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('app_role, is_vip')
         .eq('id', currentUser.id)
         .maybeSingle();
+
+      const profile: any = profileData;
 
       if (profile?.is_suspended) {
         clearStoredRedirectIntent();
@@ -290,9 +292,9 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
 
       const userSummary = {
         email: currentUser.email,
-        account_tier: profile?.account_tier || 'free',
-        is_admin: profile?.is_admin || false,
-        is_premium: profile?.is_premium || false
+        account_tier: profile?.app_role === 'admin' ? 'admin' : profile?.app_role === 'mpr' ? 'marketing_partner' : profile?.app_role === 'event_host' ? 'author' : profile?.is_vip ? 'premium' : 'free',
+        is_admin: profile?.app_role === 'admin',
+        is_premium: profile?.is_vip === true
       };
 
       const validatedRedirect = getValidRedirect(userSummary, rawRedirectUrl);
@@ -432,9 +434,9 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
         }
 
         const { data: existingPhoneUser } = await supabase
-          .from('users')
+          .from('profiles')
           .select('id')
-          .or(`contact.eq.${cleanPhone},phone.eq.${cleanPhone}`)
+          .eq('phone', cleanPhone)
           .maybeSingle();
 
         if (existingPhoneUser) {
@@ -455,49 +457,27 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
 
         if (!signInError && signInData.user) {
           // User exists! Check if profile exists, if not create it
-          let { data: existingProfile, error: profileCheckError } = await supabase
-            .from('users')
+          let { data: existingProfile } = await supabase
+            .from('profiles')
             .select('id')
             .eq('id', signInData.user.id)
             .maybeSingle();
-            
-          // If UUID lookup failed due to type mismatch, try email lookup
-          if (profileCheckError && profileCheckError.message.includes('invalid input syntax for type integer')) {
-            const { data: emailProfile } = await supabase
-              .from('users')
-              .select('id')
-              .eq('email', signInData.user.email)
-              .maybeSingle();
-            existingProfile = emailProfile;
-          }
 
           if (!existingProfile) {
             const profileData = {
+              id: signInData.user.id,
               email: signInData.user.email,
-              username,
+              username: username || signInData.user.email?.split('@')[0],
               full_name: fullName,
-              contact: cleanPhone,
               phone: cleanPhone,
-              date_of_birth: dateOfBirth,
-              is_admin: false,
-              account_tier: 'free',
-              is_premium: false,
-              registration_paid: false,
-              is_suspended: false,
+              app_role: 'guest',
+              is_vip: false,
+              wallet_balance_kobo: 0
             };
 
-            // Try inserting with id (assuming it's a UUID)
-            const { error: insertError } = await supabase
-              .from('users')
-              .insert({
-                id: signInData.user.id,
-                ...profileData
-              });
-
-            // If that fails due to type mismatch, try without ID
-            if (insertError && insertError.message.includes('invalid input syntax for type integer')) {
-              await supabase.from('users').insert(profileData);
-            }
+            await supabase
+              .from('profiles')
+              .upsert(profileData);
           }
 
           // Record user agreement
@@ -580,35 +560,19 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
 
         // Create user profile
         const profileData = {
+          id: data.user.id,
           email: data.user.email,
-          username,
+          username: username || data.user.email?.split('@')[0],
           full_name: fullName,
-          contact: cleanPhone,
           phone: cleanPhone,
-          date_of_birth: dateOfBirth,
-          is_admin: false,
-          account_tier: 'free',
-          is_premium: false,
-          registration_paid: false,
-          is_suspended: false,
+          app_role: 'guest',
+          is_vip: false,
+          wallet_balance_kobo: 0
         };
 
-        // Try inserting with id (assuming it's a UUID)
         let { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            ...profileData
-          });
-
-        if (profileError && profileError.message.includes('invalid input syntax for type integer')) {
-          console.warn('ID type mismatch detected (UUID vs Integer). Retrying without ID...');
-          // Try inserting without the ID, letting the database generate one
-          const { error: secondAttemptError } = await supabase
-            .from('users')
-            .insert(profileData);
-          profileError = secondAttemptError;
-        }
+          .from('profiles')
+          .upsert(profileData);
 
         if (profileError) {
           console.error('Final profile creation attempt failed:', profileError);

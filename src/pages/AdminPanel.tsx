@@ -569,60 +569,29 @@ export const AdminPanel: React.FC = () => {
           }
         })(),
 
-        // pendingBooks
+        // pendingBooks -> events moderation
         (async () => {
           try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
-            
-            let fetchedBooks: any[] = [];
-            if (token) {
-              try {
-                const res = await axios.get('/api/admin/books/pending', {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                if (res.data?.books) {
-                  fetchedBooks = res.data.books;
-                }
-              } catch (apiErr) {
-                console.warn('[AdminPanel] /api/admin/books/pending error, falling back to direct query:', apiErr);
-              }
-            }
+            const { data: dbEvents } = await supabase
+              .from('events')
+              .select('*')
+              .eq('status', 'pending_review')
+              .order('created_at', { ascending: false });
 
-            if (fetchedBooks.length === 0) {
-              const { data: dbBooks } = await supabase
-                .from('books')
-                .select('*')
-                .in('status', [1, 2])
-                .order('created_at', { ascending: false });
-              
-              if (dbBooks && dbBooks.length > 0) {
-                fetchedBooks = dbBooks;
-              } else {
-                const { data: fbBooks } = await supabase
-                  .from('books')
-                  .select('*')
-                  .eq('is_published', 0)
-                  .neq('status', -1)
-                  .order('created_at', { ascending: false });
-                if (fbBooks) fetchedBooks = fbBooks;
-              }
-            }
-
-            if (fetchedBooks.length > 0) {
-              const userIds = [...new Set(fetchedBooks.map((v: any) => v.user_id))].filter(Boolean);
+            if (dbEvents && dbEvents.length > 0) {
+              const organizerIds = [...new Set(dbEvents.map((v: any) => v.organizer_id))].filter(Boolean);
               let userMap: Record<string, any> = {};
-              if (userIds.length > 0) {
-                const { data: usersData } = await supabase.from('users').select('id, email, full_name').in('id', userIds);
-                if (usersData) {
-                  userMap = usersData.reduce((acc: any, u: any) => { acc[u.id] = u; return acc; }, {});
+              if (organizerIds.length > 0) {
+                const { data: profilesData } = await supabase.from('profiles').select('id, email, full_name').in('id', organizerIds);
+                if (profilesData) {
+                  userMap = profilesData.reduce((acc: any, u: any) => { acc[u.id] = u; return acc; }, {});
                 }
               }
-              const mappedBooks = fetchedBooks.map((b: any) => ({
+              const mappedEvents = dbEvents.map((b: any) => ({
                 ...b,
-                users: b.users || userMap[b.user_id] || { email: 'Unknown User' }
+                users: userMap[b.organizer_id] || { email: 'Unknown Host' }
               }));
-              setPendingBooks(mappedBooks);
+              setPendingBooks(mappedEvents);
             } else {
               setPendingBooks([]);
             }
@@ -912,39 +881,40 @@ export const AdminPanel: React.FC = () => {
 
   const handleBookAction = async (bookId: string, action: 'approve' | 'reject', admin_note?: string) => {
     try {
-      // 1. Send API request with session token for notification sending & audit
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-      try {
-        await axios.post('/api/admin/books/review', {
-          bookId,
-          action,
-          admin_note
-        }, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-      } catch (apiErr) {
-        console.warn('[handleBookAction] API review call warning, executing direct DB fallback:', apiErr);
-      }
-
-      // 2. Direct Supabase update to guarantee persistence
+      const newStatus = action === 'approve' ? 'published' : 'draft';
       const { error } = await supabase
-        .from("books")
+        .from("events")
         .update({
-          status: action === "approve" ? 3 : 5,
+          status: newStatus,
           admin_note: admin_note || null,
-          is_published: action === "approve" ? 1 : 0,
         })
         .eq("id", bookId);
 
       if (error) throw error;
+
+      // Log into admin_audit_log
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'event_moderation',
+          severity: 'audit',
+          action: action === 'approve' ? 'event_approved' : 'event_rejected',
+          target_type: 'event',
+          target_id: bookId,
+          metadata: { new_status: newStatus, admin_note: admin_note || null }
+        });
+      } catch (e) {}
+
       setPendingBooks(prev => prev.filter(b => b.id !== bookId));
       setReviewMode(false);
       setSelectedBook(null);
       fetchAdminData();
-      alert(`eBook ${action === 'approve' ? 'approved & published' : 'declined'} successfully.`);
+      alert(`Event ${action === 'approve' ? 'approved & published' : 'declined'} successfully.`);
     } catch (err: any) {
-      alert('Failed to update book status: ' + err.message);
+      alert('Failed to update event status: ' + err.message);
     }
   };
 
@@ -1214,37 +1184,29 @@ export const AdminPanel: React.FC = () => {
       targetType: typeName.toLowerCase(),
       onConfirm: async () => {
         try {
-          const session = await supabase.auth.getSession();
-          const token = session.data.session?.access_token;
-          let deleted = false;
+          await supabase
+            .from('events')
+            .update({ status: 'cancelled' })
+            .eq('id', bookId);
 
+          // Log into admin_audit_log
           try {
-            const res = await axios.delete(`/api/books/${bookId}`, {
-              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            const { data: session } = await supabase.auth.getSession();
+            const actor = session.session?.user;
+            await supabase.from('admin_audit_log').insert({
+              actor_id: actor?.id || null,
+              actor_email: actor?.email || null,
+              category: 'event_moderation',
+              severity: 'audit',
+              action: 'event_cancelled',
+              target_type: 'event',
+              target_id: bookId
             });
-            if (res.data?.success) deleted = true;
-          } catch (apiErr) {
-            console.warn('[handleDeleteBook] API delete failed, using direct DB fallback:', apiErr);
-          }
-
-          if (!deleted) {
-            // Direct Supabase fallback: mark status = -1 (soft delete) then attempt hard delete
-            const { error: sbErr } = await supabase
-              .from('books')
-              .update({ status: -1, is_published: 0 })
-              .eq('id', bookId);
-
-            if (!sbErr) {
-              deleted = true;
-              try { await supabase.from('books').delete().eq('id', bookId); } catch (e) {}
-            } else {
-              throw sbErr;
-            }
-          }
+          } catch (e) {}
 
           setPendingBooks(prev => prev.filter(b => b.id !== bookId));
           fetchAdminData();
-          alert(`${typeName} deleted successfully`);
+          alert(`${typeName} cancelled successfully`);
         } catch (err: any) {
           alert(`Failed to delete ${typeName.toLowerCase()}: ` + (err.response?.data?.error || err.message));
         } finally {

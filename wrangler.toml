@@ -4,6 +4,6 @@ compatibility_date = "2026-06-26"
 compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
-VITE_SUPABASE_URL = "https://wgdcroglmhzmrvqrixku.supabase.co"
-VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZGNyb2dsbWh6bXJ2cXJpeGt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTMxMjIsImV4cCI6MjA5MTc2OTEyMn0.zmWG2K3OpU25wSDBOSmKnpFHUABNtRklAzCg-f5VYic"
+VITE_SUPABASE_URL = "https://arbwwbbqpncqxekbttoi.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyYnd3YmJxcG5jcXhla2J0dG9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNDk3ODksImV4cCI6MjA5NTkyNTc4OX0.cJY1MkYZGGypJ_XqvHFPHHpeqXbI3CP-tSkA4dL4yQY"
 VITE_API_BASE_URL = "https://evvex-token.pages.dev"

@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product. To be unmounted in a later pass.
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ChevronLeft, ShieldCheck, CreditCard, User, BookOpen, Share2, CheckCircle2, Tag, Trophy, Lock } from 'lucide-react';

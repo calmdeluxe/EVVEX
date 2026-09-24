@@ -82,28 +82,28 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
 
         if (isAdmin) {
           try {
-            const adminRes = await axios.get('/api/admin/books');
-            if (adminRes.data && adminRes.data.books) {
-              const pendingList = adminRes.data.books.filter((b: any) => {
-                const isPending = b.status === 'pending_review' || b.status === 2 || b.status === 0 || b.status === 'pending';
-                return isPending;
-              });
-              setPendingBooksList(pendingList);
+            const { data: pendingEvents } = await supabase
+              .from('events')
+              .select('id, title, organizer_id, created_at')
+              .eq('status', 'pending_review');
 
-              const pendingNotifs = pendingList.map((book: any) => ({
-                id: `pending-book-${book.id}`,
-                title: `📖 Pending Review: ${book.title || 'Untitled eBook'}`,
-                message: `Submitted by ${book.users?.full_name || book.users?.email || 'Author'}. Click to inspect cards & make decision.`,
+            if (pendingEvents && pendingEvents.length > 0) {
+              setPendingBooksList(pendingEvents);
+
+              const pendingNotifs = pendingEvents.map((event: any) => ({
+                id: `pending-event-${event.id}`,
+                title: `🎫 Pending Review: ${event.title || 'Untitled Event'}`,
+                message: `An event submission is awaiting moderation. Click to review.`,
                 is_read: false,
-                created_at: book.created_at || new Date().toISOString(),
-                link: `/edit/${book.id}`,
-                isPendingEbook: true
+                created_at: event.created_at || new Date().toISOString(),
+                link: `/admin/reviews`,
+                isPendingEbook: false
               }));
 
               allNotifs = [...pendingNotifs, ...allNotifs];
             }
           } catch (adminErr) {
-            console.warn("Failed to fetch pending admin books for notifications:", adminErr);
+            console.warn("Failed to fetch pending admin events for notifications:", adminErr);
           }
         }
 

@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product. To be unmounted in a later pass.
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';

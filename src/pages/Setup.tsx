@@ -69,7 +69,7 @@ export const Setup: React.FC = () => {
       };
 
       try {
-        const { data, error } = await supabase.from('users').select('id').limit(1);
+        const { data, error } = await supabase.from('profiles').select('id').limit(1);
         if (!error) {
           const u = (supabase as any).supabaseUrl || form.url || import.meta.env.VITE_SUPABASE_URL || '';
           const k = (supabase as any).supabaseKey || form.key || import.meta.env.VITE_SUPABASE_ANON_KEY || '';

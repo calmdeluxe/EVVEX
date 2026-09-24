@@ -98,24 +98,13 @@ export const AdminPaymentVerifications: React.FC = () => {
         const userIds = [...new Set(directVers.map((v: any) => v.user_id))].filter(Boolean);
         let userMap: Record<string, any> = {};
         if (userIds.length > 0) {
-          let usersData = null;
-          const { data: viewData, error: viewErr } = await supabase
-            .from('user_profiles_public')
+          const { data: profilesData } = await supabase
+            .from('profiles')
             .select('id, email, full_name')
             .in('id', userIds);
           
-          if (!viewErr && viewData) {
-            usersData = viewData;
-          } else {
-            const { data: fbData } = await supabase
-              .from('users')
-              .select('id, email, full_name')
-              .in('id', userIds);
-            usersData = fbData;
-          }
-          
-          if (usersData) {
-            userMap = usersData.reduce((acc: any, u: any) => {
+          if (profilesData) {
+            userMap = profilesData.reduce((acc: any, u: any) => {
               acc[u.id] = u;
               return acc;
             }, {});
@@ -124,6 +113,7 @@ export const AdminPaymentVerifications: React.FC = () => {
         
         allVerifications = directVers.map((v: any) => ({
           ...v,
+          profiles: userMap[v.user_id] || { email: 'Unknown', full_name: 'Deleted User' },
           users: userMap[v.user_id] || { email: 'Unknown', full_name: 'Deleted User' }
         }));
       }
@@ -138,15 +128,15 @@ export const AdminPaymentVerifications: React.FC = () => {
   const fetchPublishedBooks = async () => {
     try {
       const { data, error: bError } = await supabase
-        .from('books')
-        .select('id, title, price')
-        .not("publish_status", "eq", "-1");
+        .from('events')
+        .select('id, title')
+        .neq("status", "cancelled");
         
       if (!bError && data) {
         setBooks(data);
       }
     } catch (err: any) {
-      console.error("Error retrieving eBooks list:", err);
+      console.error("Error retrieving events list:", err);
     }
   };
 
@@ -193,50 +183,22 @@ export const AdminPaymentVerifications: React.FC = () => {
     // 3. If approved, apply consequences
     if (action === "approve") {
       const { data: user } = await supabase
-        .from("users")
-        .select("email")
+        .from("profiles")
+        .select("email, app_role")
         .eq("id", pv.user_id)
         .maybeSingle();
 
       if (user) {
         if (finalType === "premium_upgrade" || finalType === "premium") {
-          await supabase.rpc("admin_set_user_tier", {
-            p_email: user.email,
-            p_new_tier: "premium",
-          });
+          await supabase.from("profiles").update({ is_vip: true }).eq("id", pv.user_id);
         } else if (finalType === "author_upgrade" || finalType === "author") {
-          await supabase.rpc("admin_set_user_tier", {
-            p_email: user.email,
-            p_new_tier: "author",
-          });
-        } else if ((finalType === "ebook_purchase" || finalType === "purchase") && finalRef) {
-          await supabase.from("transactions").insert({
+          await supabase.from("profiles").update({ app_role: "event_host" }).eq("id", pv.user_id);
+        } else if (finalRef) {
+          await supabase.from("event_tickets").insert({
             user_id: pv.user_id,
-            book_id: finalRef,
-            buyer_email: user.email,
-            amount: Math.round(pv.amount || 0),
-            type: "purchase",
-            status: "successful",
-            paystack_reference: pv.transaction_ref || `MANUAL-${pv.id}`,
+            event_id: finalRef,
+            status: 'valid'
           });
-
-          try {
-            const { data: existingEpic } = await supabase
-              .from("ebook_purchases")
-              .select("*")
-              .eq("user_id", pv.user_id)
-              .eq("ebook_id", finalRef)
-              .maybeSingle();
-
-            if (!existingEpic) {
-              await supabase.from("ebook_purchases").insert({
-                user_id: pv.user_id,
-                ebook_id: finalRef
-              });
-            }
-          } catch (e: any) {
-            console.warn("ebook_purchases insert failed in verify:", e);
-          }
         }
       }
     }
@@ -301,7 +263,7 @@ export const AdminPaymentVerifications: React.FC = () => {
       if (!email) throw new Error("No user email is associated with this inquiry.");
 
       const { data: userData, error: userError } = await supabase
-        .from("users")
+        .from("profiles")
         .select("id, email, full_name")
         .eq("email", email)
         .maybeSingle();
@@ -309,61 +271,40 @@ export const AdminPaymentVerifications: React.FC = () => {
         throw new Error("User not found: " + email);
       }
 
-      const { data: bookData, error: bookError } = await supabase
-        .from("books")
-        .select("id, title, price")
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .select("id, title")
         .eq("id", targetBook)
         .maybeSingle();
-      if (bookError || !bookData) {
-        throw new Error("Book not found.");
+      if (eventError || !eventData) {
+        throw new Error("Event not found.");
       }
 
-      const saleAmount = bookData.price || 0;
-
-      const { data: existingTx } = await supabase
-        .from("transactions")
-        .select("id")
-        .eq("user_id", userData.id)
-        .eq("book_id", targetBook)
-        .eq("type", "purchase")
-        .eq("status", "successful")
-        .maybeSingle();
-
-      if (existingTx) {
-        throw new Error("User already has access to/purchased this book!");
-      }
-
-      const { error: txErr } = await supabase.from("transactions").insert({
+      const { error: ticketErr } = await supabase.from("event_tickets").insert({
         user_id: userData.id,
-        book_id: targetBook,
-        buyer_email: userData.email,
-        amount: Math.round(saleAmount),
-        type: "purchase",
-        status: "successful",
-        paystack_reference: `MANUAL-ADMIN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        event_id: targetBook,
+        status: 'valid'
       });
 
-      if (txErr) throw txErr;
+      if (ticketErr) throw ticketErr;
 
+      // Log into admin_audit_log
       try {
-        const { data: existingEpic } = await supabase
-          .from("ebook_purchases")
-          .select("*")
-          .eq("user_id", userData.id)
-          .eq("ebook_id", targetBook)
-          .maybeSingle();
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'financial',
+          severity: 'audit',
+          action: 'manual_ticket_granted',
+          target_type: 'ticket',
+          target_id: targetBook,
+          metadata: { user_id: userData.id, event_title: eventData.title }
+        });
+      } catch (e) {}
 
-        if (!existingEpic) {
-          await supabase.from("ebook_purchases").insert({
-            user_id: userData.id,
-            ebook_id: targetBook
-          });
-        }
-      } catch (e: any) {
-        console.warn("ebook_purchases insert failed:", e);
-      }
-
-      setSuccess(`Directly granted user ${email} access to eBook successfully!`);
+      setSuccess(`Directly granted ticket access to ${email} for event "${eventData.title}"!`);
       setSelectedRequest(null);
       await fetchVerifications();
     } catch (err: any) {

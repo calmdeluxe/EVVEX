@@ -49,24 +49,13 @@ export const AdminSupport: React.FC = () => {
         const userIds = [...new Set(directReqs.map((r: any) => r.user_id))].filter(Boolean);
         let userMap: Record<string, any> = {};
         if (userIds.length > 0) {
-          let usersData = null;
-          const { data: viewData, error: viewErr } = await supabase
-            .from('user_profiles_public')
+          const { data: profilesData } = await supabase
+            .from('profiles')
             .select('id, email, full_name')
             .in('id', userIds);
           
-          if (!viewErr && viewData) {
-            usersData = viewData;
-          } else {
-            const { data: fbData } = await supabase
-              .from('users')
-              .select('id, email, full_name')
-              .in('id', userIds);
-            usersData = fbData;
-          }
-          
-          if (usersData) {
-            userMap = usersData.reduce((acc: any, u: any) => {
+          if (profilesData) {
+            userMap = profilesData.reduce((acc: any, u: any) => {
               acc[u.id] = u;
               return acc;
             }, {});
@@ -75,6 +64,7 @@ export const AdminSupport: React.FC = () => {
         
         allRequests = directReqs.map((r: any) => ({
           ...r,
+          profiles: userMap[r.user_id] || { email: 'Unknown', full_name: 'Deleted User' },
           users: userMap[r.user_id] || { email: 'Unknown', full_name: 'Deleted User' }
         }));
       } else {

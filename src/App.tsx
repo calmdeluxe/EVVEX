@@ -568,7 +568,7 @@ const EmergencyConfigOverlay = () => {
 };
 
 "use strict";
-// Removed SchemaGuardWarning to reduce noise
+// DISABLED: SchemaGuard validates CalmReader schema; EVEX uses profiles + events tables.
 const SchemaGuardWarning = () => null;
 
 const SupabaseConfigWarning = () => {

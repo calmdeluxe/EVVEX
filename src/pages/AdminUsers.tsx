@@ -74,20 +74,19 @@ export const AdminUsers: React.FC = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      let loadedUsers = [];
+      let loadedUsers: any[] = [];
       const { data, error } = await supabase
-        .from('user_profiles_public')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        loadedUsers = data;
-      } else {
-        const { data: fallbackData } = await supabase
-          .from('users')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (fallbackData) loadedUsers = fallbackData;
+      if (!error && data) {
+        loadedUsers = data.map((u: any) => ({
+          ...u,
+          account_tier: u.app_role === 'admin' ? 'admin' : u.app_role === 'mpr' ? 'marketing_partner' : u.app_role === 'event_host' ? 'author' : u.is_vip ? 'premium' : 'free',
+          is_admin: u.app_role === 'admin',
+          is_premium: u.is_vip === true
+        }));
       }
 
       setUsers(loadedUsers);
@@ -163,24 +162,46 @@ export const AdminUsers: React.FC = () => {
     }
 
     try {
-      const updates: any = { account_tier: targetTier };
-      if (targetTier === 'premium') updates.is_premium = true;
-      if (targetTier === 'marketing_partner') updates.role = 'marketing_partner';
+      const updates: any = {};
+      let mappedRole = targetUser.app_role;
+      if (targetTier === 'admin') {
+        updates.app_role = 'admin';
+        updates.is_vip = true;
+        mappedRole = 'admin';
+      } else if (targetTier === 'marketing_partner' || targetTier === 'mpr') {
+        updates.app_role = 'mpr';
+        mappedRole = 'mpr';
+      } else if (targetTier === 'author' || targetTier === 'event_host') {
+        updates.app_role = 'event_host';
+        mappedRole = 'event_host';
+      } else if (targetTier === 'premium') {
+        updates.is_vip = true;
+      } else {
+        updates.app_role = 'guest';
+        updates.is_vip = false;
+        mappedRole = 'guest';
+      }
 
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update(updates)
         .eq('id', targetUser.id);
 
       if (error) throw error;
 
-      // Log activity
+      // Log activity to admin_audit_log
       try {
-        await supabase.from('admin_activity_log').insert({
-          action: `USER_TIER_CHANGED_TO_${targetTier.toUpperCase()}`,
-          target_type: 'user',
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'security',
+          severity: 'audit',
+          action: 'role_changed',
+          target_type: 'profile',
           target_id: targetUser.id,
-          details: { email: targetUser.email, new_tier: targetTier }
+          metadata: { email: targetUser.email, previous_role: targetUser.app_role, new_role: mappedRole }
         });
       } catch (e) {}
 
@@ -215,24 +236,23 @@ export const AdminUsers: React.FC = () => {
     const newStatus = !targetUser.is_suspended;
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_suspended: newStatus })
-        .eq('id', targetUser.id);
-
-      if (error) throw error;
-
-      // Log activity
+      // Log suspension action into admin_audit_log
       try {
-        await supabase.from('admin_activity_log').insert({
-          action: newStatus ? 'USER_SUSPENDED' : 'USER_UNSUSPENDED',
-          target_type: 'user',
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'security',
+          severity: 'audit',
+          action: newStatus ? 'user_suspended' : 'user_unsuspended',
+          target_type: 'profile',
           target_id: targetUser.id,
-          details: { email: targetUser.email }
+          metadata: { email: targetUser.email }
         });
       } catch (e) {}
 
-      alert(`User ${targetUser.email} has been successfully ${newStatus ? 'suspended' : 'unsuspended'}.`);
+      alert(`User ${targetUser.email} has been successfully updated.`);
       setSuspendModal({ open: false, inputText: '' });
       fetchUsers();
     } catch (err: any) {
@@ -243,7 +263,7 @@ export const AdminUsers: React.FC = () => {
   const handleBulkAction = async (actionType: 'upgrade' | 'demote' | 'suspend') => {
     if (selectedUserIds.length === 0) return;
 
-    const actionText = actionType === 'upgrade' ? 'upgrade to Premium' : actionType === 'demote' ? 'demote to Free' : 'suspend';
+    const actionText = actionType === 'upgrade' ? 'upgrade to VIP' : actionType === 'demote' ? 'demote to Guest' : 'suspend';
     
     if (actionType === 'suspend') {
       const input = prompt(`Type "confirm" to suspend ${selectedUserIds.length} selected user(s):`);
@@ -257,24 +277,30 @@ export const AdminUsers: React.FC = () => {
 
     try {
       let updates: any = {};
-      if (actionType === 'upgrade') updates = { account_tier: 'premium', is_premium: true };
-      else if (actionType === 'demote') updates = { account_tier: 'free', is_premium: false };
-      else if (actionType === 'suspend') updates = { is_suspended: true };
+      if (actionType === 'upgrade') updates = { is_vip: true };
+      else if (actionType === 'demote') updates = { app_role: 'guest', is_vip: false };
 
-      const { error } = await supabase
-        .from('users')
-        .update(updates)
-        .in('id', selectedUserIds);
+      if (Object.keys(updates).length > 0) {
+        const { error } = await supabase
+          .from('profiles')
+          .update(updates)
+          .in('id', selectedUserIds);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
-      // Log bulk action
+      // Log bulk action to admin_audit_log
       try {
-        await supabase.from('admin_activity_log').insert({
-          action: `BULK_ACTION_${actionType.toUpperCase()}`,
-          target_type: 'users',
-          target_id: `${selectedUserIds.length}_users`,
-          details: { count: selectedUserIds.length, user_ids: selectedUserIds }
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'security',
+          severity: 'audit',
+          action: `bulk_${actionType}`,
+          target_type: 'profile',
+          metadata: { count: selectedUserIds.length, user_ids: selectedUserIds }
         });
       } catch (e) {}
 

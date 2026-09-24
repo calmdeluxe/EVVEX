@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product. To be unmounted in a later pass.
 import React, { useState } from 'react';
 import { Play, Share2, Trophy, BookOpen, BrainCircuit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

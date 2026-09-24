@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigStatus } from './supabase';
-import { verifyBooksSchema } from './lib/schemaGuard';
+// DISABLED: SchemaGuard validates CalmReader schema; EVEX uses profiles + events tables.
+// import { verifyBooksSchema } from './lib/schemaGuard';
 import { clearStoredRedirectIntent } from './lib/authUtils';
 import { EvexAccountType, EvexPlatformRole, EvexEventAccessRole } from './types/account';
 import { resolveEvexUserContext, isPlatformAdminEmail } from './lib/accountMapping';
@@ -150,6 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 2. Check schema on start (Web only)
+      // DISABLED: SchemaGuard validates CalmReader schema; EVEX uses profiles + events tables.
+      /*
       if (!supabaseConfigStatus.isPlaceholder) {
         const schemaPromise = verifyBooksSchema();
         const timeoutPromise = new Promise<{ ok: boolean, problems: string[] }>((resolve) => 
@@ -163,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setSchemaProblems(["Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the Secrets panel."]);
       }
+      */
 
       // 3. Get initial session with 2s timeout
       try {
@@ -318,7 +322,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // 1. Primary fetch by UUID
       let { data: profileData, error: profileError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
@@ -330,7 +334,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log(`[AuthContext] Profile retry ${attempts}/2 (waiting for trigger)...`);
         await new Promise(resolve => setTimeout(resolve, 1200));
         const { data: retryData, error: retryErr } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', userId)
           .maybeSingle();
@@ -344,17 +348,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: session } = await supabase.auth.getSession();
         const user = session.session?.user;
         if (user) {
-          const lowerEmail = (user.email || '').toLowerCase();
-          const isAdminEmail = false; // Security: Managed via database only
-          
           const { data: manualProfile, error: manualError } = await supabase
-            .from('users')
+            .from('profiles')
             .insert({
               id: userId,
               email: user.email,
               full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-              account_tier: 'free',
-              is_admin: false
+              username: user.email?.split('@')[0],
+              app_role: 'guest',
+              is_vip: false,
+              wallet_balance_kobo: 0
             })
             .select()
             .maybeSingle();
@@ -369,19 +372,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentUser) {
         const isAdminEmail = isPlatformAdminEmail(currentUser.email);
         if (isAdminEmail) {
-          if (!profileData || profileData.is_admin !== true || profileData.account_tier !== 'admin' || profileData.app_role !== 'admin') {
+          if (!profileData || profileData.app_role !== 'admin' || profileData.is_vip !== true) {
             console.log("[AuthContext] Admin profile missing or needs update in DB, performing insert/upsert...");
             const adminProfileObj = {
               id: userId,
               email: currentUser.email,
               full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0],
-              account_tier: 'admin',
               app_role: 'admin',
-              is_admin: true,
-              is_premium: true
+              is_vip: true,
+              wallet_balance_kobo: profileData?.wallet_balance_kobo || 0
             };
             const { data: upsertData, error: upsertErr } = await supabase
-              .from('users')
+              .from('profiles')
               .upsert(adminProfileObj)
               .select()
               .maybeSingle();
@@ -395,6 +397,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         }
+      }
+
+      if (profileData) {
+        profileData.account_tier = profileData.account_tier || (profileData.app_role === 'admin' ? 'admin' : profileData.app_role === 'mpr' ? 'mpr' : profileData.app_role === 'event_host' ? 'author' : profileData.is_vip ? 'premium' : 'free');
+        profileData.is_admin = profileData.app_role === 'admin' || profileData.is_admin === true;
+        profileData.is_premium = profileData.is_vip === true || profileData.is_premium === true;
+        profileData.role = profileData.app_role || 'guest';
       }
 
       if (profileError) {
@@ -483,12 +492,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // 2. Direct database fetch
         const { data: dbProfile, error: fetchError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', authUser.id)
           .maybeSingle();
         
         if (dbProfile) {
+          dbProfile.account_tier = dbProfile.account_tier || (dbProfile.app_role === 'admin' ? 'admin' : dbProfile.app_role === 'mpr' ? 'mpr' : dbProfile.app_role === 'event_host' ? 'author' : dbProfile.is_vip ? 'premium' : 'free');
+          dbProfile.is_admin = dbProfile.app_role === 'admin' || dbProfile.is_admin === true;
+          dbProfile.is_premium = dbProfile.is_vip === true || dbProfile.is_premium === true;
+          dbProfile.role = dbProfile.app_role || 'guest';
           setProfile(dbProfile);
           return dbProfile;
         }
@@ -505,17 +518,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const newProfile: any = {
           id: authUser.id,
-          account_tier: 'free'
+          email: authUser.email,
+          full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0],
+          username: uniqueUsername,
+          app_role: 'guest',
+          is_vip: false,
+          wallet_balance_kobo: 0
         };
 
         const { data: created, error: createError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert(newProfile)
           .select()
           .maybeSingle();
         
         if (created) {
           console.log("[AuthContext] Profile created successfully.");
+          created.account_tier = created.account_tier || 'free';
+          created.is_admin = created.app_role === 'admin';
+          created.is_premium = created.is_vip === true;
+          created.role = created.app_role || 'guest';
           setProfile(created);
           return created;
         }

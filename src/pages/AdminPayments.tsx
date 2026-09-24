@@ -43,24 +43,13 @@ export const AdminPayments: React.FC = () => {
         const userIds = [...new Set(directVers.map((v: any) => v.user_id))].filter(Boolean);
         let userMap: Record<string, any> = {};
         if (userIds.length > 0) {
-          let usersData = null;
-          const { data: viewData, error: viewErr } = await supabase
-            .from('user_profiles_public')
+          const { data: profilesData } = await supabase
+            .from('profiles')
             .select('id, email, full_name')
             .in('id', userIds);
           
-          if (!viewErr && viewData) {
-            usersData = viewData;
-          } else {
-            const { data: fbData } = await supabase
-              .from('users')
-              .select('id, email, full_name')
-              .in('id', userIds);
-            usersData = fbData;
-          }
-          
-          if (usersData) {
-            userMap = usersData.reduce((acc: any, u: any) => {
+          if (profilesData) {
+            userMap = profilesData.reduce((acc: any, u: any) => {
               acc[u.id] = u;
               return acc;
             }, {});
@@ -69,6 +58,7 @@ export const AdminPayments: React.FC = () => {
         
         allVerifications = directVers.map((v: any) => ({
           ...v,
+          profiles: userMap[v.user_id] || { email: 'Unknown', full_name: 'Deleted User' },
           users: userMap[v.user_id] || { email: 'Unknown', full_name: 'Deleted User' }
         }));
       } else {
@@ -117,53 +107,41 @@ export const AdminPayments: React.FC = () => {
       // 3. If approved, apply consequences
       if (action === "approve") {
         const { data: user } = await supabase
-          .from("users")
-          .select("email")
+          .from("profiles")
+          .select("email, app_role")
           .eq("id", pv.user_id)
           .maybeSingle();
 
         if (user) {
           if (pv.transaction_type === "premium_upgrade") {
-            await supabase.rpc("admin_set_user_tier", {
-              p_email: user.email,
-              p_new_tier: "premium",
-            });
+            await supabase.from("profiles").update({ is_vip: true }).eq("id", pv.user_id);
           } else if (pv.transaction_type === "author_upgrade") {
-            await supabase.rpc("admin_set_user_tier", {
-              p_email: user.email,
-              p_new_tier: "author",
-            });
-          } else if (pv.transaction_type === "ebook_purchase" && pv.reference_id) {
-            await supabase.from("transactions").insert({
+            await supabase.from("profiles").update({ app_role: "event_host" }).eq("id", pv.user_id);
+          } else if (pv.reference_id) {
+            // Fulfill event ticket
+            await supabase.from("event_tickets").insert({
               user_id: pv.user_id,
-              book_id: pv.reference_id,
-              buyer_email: user.email,
-              amount: Math.round(pv.amount || 0),
-              type: "purchase",
-              status: "successful",
-              paystack_reference: pv.transaction_ref || `MANUAL-${pv.id}`,
+              event_id: pv.reference_id,
+              status: 'valid'
             });
-
-            try {
-              const { data: existingEpic } = await supabase
-                .from("ebook_purchases")
-                .select("*")
-                .eq("user_id", pv.user_id)
-                .eq("ebook_id", pv.reference_id)
-                .maybeSingle();
-
-              if (!existingEpic) {
-                await supabase.from("ebook_purchases").insert({
-                  user_id: pv.user_id,
-                  ebook_id: pv.reference_id
-                });
-              }
-            } catch (e: any) {
-              console.warn("ebook_purchases insert failed in verify:", e);
-            }
           }
         }
       }
+
+      // Log into admin_audit_log
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'financial',
+          severity: 'audit',
+          action: action === 'approve' ? 'payment_approved' : 'payment_rejected',
+          target_type: 'payment',
+          metadata: { pv_id: id, user_id: pv.user_id, amount: pv.amount, note }
+        });
+      } catch (e) {}
 
       setNote('');
       fetchVerifications();

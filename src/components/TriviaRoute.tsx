@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product. To be unmounted in a later pass.
 import React from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';

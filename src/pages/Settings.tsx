@@ -71,16 +71,11 @@ export const Settings: React.FC = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           full_name: fullName,
           username: username,
-          contact: contact,
-          bank_name: bankName,
-          account_number: accountNumber,
-          account_name: accountName,
-          bio: bio,
-          social_link: socialLink
+          phone: contact
         })
         .eq('id', user.id);
 

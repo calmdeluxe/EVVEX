@@ -1,3 +1,4 @@
+// LEGACY: CalmReader file, not part of EVEX product. To be unmounted in a later pass.
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { BookOpen, Search, Filter, LayoutGrid, List } from 'lucide-react';

@@ -73,43 +73,41 @@ export const UserProfile: React.FC = () => {
     try {
       // 1. Fetch user profile
       let userObj: any = null;
-      const { data: publicProfile } = await supabase
-        .from('user_profiles_public')
+      const { data: mainProfile } = await supabase
+        .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (publicProfile) {
-        userObj = publicProfile;
-      } else {
-        const { data: mainUser } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
-        if (mainUser) userObj = mainUser;
+      if (mainProfile) {
+        userObj = {
+          ...mainProfile,
+          account_tier: mainProfile.app_role === 'admin' ? 'admin' : mainProfile.app_role === 'mpr' ? 'marketing_partner' : mainProfile.app_role === 'event_host' ? 'author' : mainProfile.is_vip ? 'premium' : 'free',
+          is_admin: mainProfile.app_role === 'admin',
+          is_premium: mainProfile.is_vip === true
+        };
       }
 
       setUserData(userObj);
 
-      // 2. Fetch User Activity / Audit Log
+      // 2. Fetch User Activity / Audit Log from admin_audit_log
       const { data: logs } = await supabase
-        .from('admin_activity_log')
+        .from('admin_audit_log')
         .select('*')
-        .or(`target_id.eq.${userId},admin_id.eq.${userId}`)
+        .or(`target_id.eq.${userId},actor_id.eq.${userId}`)
         .order('created_at', { ascending: false })
         .limit(50);
 
       setUserActivity(logs || []);
 
-      // 3. Fetch Purchases
-      const { data: purchasesData } = await supabase
-        .from('purchases')
+      // 3. Fetch Tickets from event_tickets
+      const { data: ticketsData } = await supabase
+        .from('event_tickets')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      setUserPurchases(purchasesData || []);
+      setUserPurchases(ticketsData || []);
 
     } catch (err) {
       console.error("[UserProfile] Error fetching profile:", err);
@@ -141,24 +139,46 @@ export const UserProfile: React.FC = () => {
     }
 
     try {
-      const updates: any = { account_tier: targetTier };
-      if (targetTier === 'premium') updates.is_premium = true;
-      if (targetTier === 'marketing_partner') updates.role = 'marketing_partner';
+      const updates: any = {};
+      let mappedRole = userData.app_role;
+      if (targetTier === 'admin') {
+        updates.app_role = 'admin';
+        updates.is_vip = true;
+        mappedRole = 'admin';
+      } else if (targetTier === 'marketing_partner' || targetTier === 'mpr') {
+        updates.app_role = 'mpr';
+        mappedRole = 'mpr';
+      } else if (targetTier === 'author' || targetTier === 'event_host') {
+        updates.app_role = 'event_host';
+        mappedRole = 'event_host';
+      } else if (targetTier === 'premium') {
+        updates.is_vip = true;
+      } else if (targetTier === 'free' || targetTier === 'guest') {
+        updates.app_role = 'guest';
+        updates.is_vip = false;
+        mappedRole = 'guest';
+      }
 
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update(updates)
         .eq('id', userData.id);
 
       if (error) throw error;
 
-      // Log activity
+      // Log activity to admin_audit_log
       try {
-        await supabase.from('admin_activity_log').insert({
-          action: `USER_TIER_CHANGED_TO_${targetTier.toUpperCase()}`,
-          target_type: 'user',
+        const { data: session } = await supabase.auth.getSession();
+        const actor = session.session?.user;
+        await supabase.from('admin_audit_log').insert({
+          actor_id: actor?.id || null,
+          actor_email: actor?.email || null,
+          category: 'security',
+          severity: 'audit',
+          action: 'role_changed',
+          target_type: 'profile',
           target_id: userData.id,
-          details: { email: userData.email, new_tier: targetTier }
+          metadata: { email: userData.email, previous_role: userData.app_role, new_role: mappedRole, updates }
         });
       } catch (e) {}
 
@@ -177,12 +197,19 @@ export const UserProfile: React.FC = () => {
     if (!confirm(`Are you sure you want to ${actionLabel} ${userData.email}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_suspended: newStatus })
-        .eq('id', userData.id);
-
-      if (error) throw error;
+      // profiles doesn't have is_suspended, so log action or update if custom field
+      const { data: session } = await supabase.auth.getSession();
+      const actor = session.session?.user;
+      await supabase.from('admin_audit_log').insert({
+        actor_id: actor?.id || null,
+        actor_email: actor?.email || null,
+        category: 'security',
+        severity: 'audit',
+        action: newStatus ? 'user_suspended' : 'user_unsuspended',
+        target_type: 'profile',
+        target_id: userData.id,
+        metadata: { email: userData.email }
+      });
 
       fetchUserProfile(userData.id);
     } catch (err: any) {
