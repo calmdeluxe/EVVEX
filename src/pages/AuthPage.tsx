@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, BookOpen, CheckCircle2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Ticket, CheckCircle2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mode }) => {
   const navigate = useNavigate();
@@ -648,38 +648,53 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
 
   const title = mode === 'login' ? 'Login' : mode === 'signup' ? 'Sign Up' : 'Forgot Password';
   const description = mode === 'login' 
-    ? 'Enter your credentials to access your bookshelf' 
+    ? 'Sign in to discover and manage the events you care about.'
     : mode === 'signup' 
-    ? 'Create an account to start building your card books' 
-    : 'Enter your email to receive a reset link';
+    ? 'Create your account to find your people and make more of every moment.'
+    : 'Enter your email and we will send you a secure reset link.';
 
   const showGoogleButton = true;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#030308] text-white p-4 py-12 font-sans relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#EAB308]/5 blur-[120px] rounded-full pointer-events-none" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f2ecdf] text-white px-4 py-8 font-sans relative overflow-hidden sm:px-8 sm:py-12">
+      <div className="absolute inset-0 pointer-events-none opacity-35" style={{ backgroundImage: 'linear-gradient(rgba(16,29,53,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(16,29,53,0.035) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
 
-      <div className="mb-8 z-10 font-sans">
+      <div className="mb-5 w-full max-w-5xl z-10 font-sans sm:mb-7">
         <Link 
           to="/" 
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-xs text-white/70 hover:text-black font-black uppercase tracking-widest bg-white/5 hover:bg-[#EAB308] rounded-full border border-white/10 hover:border-[#EAB308] transition-all duration-300 shadow-[0_4px_12px_rgba(0,0,0,0.5)] hover:shadow-[0_10px_20px_rgba(234,179,8,0.25)] hover:scale-105"
+          className="inline-flex items-center gap-2 rounded-full border border-[#10203a]/15 bg-white/35 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-[#10203a]/70 transition hover:border-[#ad8543]/60 hover:bg-white/70 hover:text-[#10203a]"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Home</span>
         </Link>
       </div>
 
-      <Link to="/" className="flex items-center gap-3 mb-10 z-10 hover:opacity-90 transition-opacity">
-        <div className="bg-[#EAB308] p-2.5 rounded-2xl shadow-lg shadow-[#EAB308]/20">
-          <BookOpen className="w-7 h-7 text-black" />
+      <div className="z-10 mb-7 flex w-full max-w-5xl items-center justify-between gap-5 sm:mb-9">
+      <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+        <div className="grid size-11 place-items-center rounded-2xl bg-[#10203a] text-[#e3c581] shadow-lg">
+          <Ticket className="w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-black font-sans tracking-tighter text-white">EVVEX</h1>
+        <h1 className="text-2xl font-black font-sans tracking-[0.08em] text-[#10203a]">EVVEX</h1>
       </Link>
+      <p className="hidden text-right text-xs font-semibold text-[#263650]/60 sm:block">Where moments become memories.</p>
+      </div>
 
-      <Card className="w-full max-w-md bg-[#0c0c14] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] rounded-3xl z-10 overflow-hidden">
-        <CardHeader className="border-b border-white/5 pb-6">
+      <Card className="z-10 w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/15 bg-[#10203a] shadow-[0_26px_70px_rgba(16,32,58,0.24)] md:grid md:grid-cols-[0.85fr_1.15fr]">
+        <div className="relative hidden min-h-full flex-col justify-between overflow-hidden border-r border-white/10 bg-[#0c1a31] p-10 md:flex lg:p-12">
+          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(135deg, transparent 0 48%, rgba(227,197,129,0.22) 48.2%, transparent 48.5%), linear-gradient(45deg, transparent 0 72%, rgba(227,197,129,0.16) 72.2%, transparent 72.5%)' }} />
+          <div className="relative">
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[#e3c581]">A better night begins here</span>
+            <h2 className="mt-5 max-w-sm font-serif text-4xl font-semibold leading-tight text-white lg:text-5xl">Make plans worth remembering.</h2>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-white/60">Find upcoming gatherings, secure your place, and meet the moments that matter.</p>
+          </div>
+          <div className="relative mt-10 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+            <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#e3c581] text-[#10203a]"><Ticket className="size-5" /></span><div><p className="text-sm font-bold text-white">EVVEX Events</p><p className="text-xs text-white/55">Real events. Real tickets.</p></div></div>
+          </div>
+        </div>
+        <div>
+        <CardHeader className="border-b border-white/10 px-6 pb-6 pt-7 sm:px-9 sm:pt-9">
           <CardTitle className="text-2xl font-black tracking-tight text-white">{title}</CardTitle>
-          <CardDescription className="text-white/45 text-sm font-medium mt-1">
+          <CardDescription className="mt-1 text-sm font-medium text-white/60">
             {description}
             {mode === 'signup' && (
               <span className="block mt-2 text-[10px] text-[#EAB308] font-bold uppercase tracking-wider">
@@ -688,7 +703,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
             )}
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="px-6 pt-6 sm:px-9">
             {showVerifyInput ? (
               <form onSubmit={handleVerifyOtp} className="space-y-4 font-sans">
                 <div className="space-y-2">
@@ -1024,7 +1039,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
           </form>
         )}
       </CardContent>
-      <CardFooter className="flex flex-col gap-2.5 text-xs text-white/55 border-t border-white/5 pt-6 mt-4 pb-6">
+      <CardFooter className="mx-6 mt-4 flex flex-col gap-2.5 border-t border-white/10 pb-7 pt-6 text-xs text-white/55 sm:mx-9">
           {mode === 'login' && (
             <>
               <p>Don't have an account? <Link to="/signup" className="text-[#EAB308] font-bold hover:underline">Sign Up</Link></p>
@@ -1038,6 +1053,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
             <p>Back to <Link to="/login" className="text-[#EAB308] font-bold hover:underline">Login</Link></p>
           )}
         </CardFooter>
+        </div>
       </Card>
     </div>
   );

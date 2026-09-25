@@ -20,7 +20,7 @@ import { Settings } from './pages/Settings';
 import { Security } from './pages/Security';
 import { RequestPage } from './pages/RequestPage';
 import { Setup } from './pages/Setup';
-import { LandingPage } from './pages/LandingPage';
+import { EventLandingPage } from './pages/EventLandingPage';
 import { AiMagic } from './pages/AiMagic';
 import { TriviaHub } from './pages/TriviaHub';
 import { TriviaPlayer } from './pages/TriviaPlayer';
@@ -267,7 +267,7 @@ const AppContent = () => {
       <CapacitorProvider>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<EventLandingPage />} />
           <Route path="/bookshelf" element={<Bookshelf />} />
             <Route path="/events" element={<EventMarketplace />} />
             <Route path="/events/:id" element={<EventMarketplace />} />
