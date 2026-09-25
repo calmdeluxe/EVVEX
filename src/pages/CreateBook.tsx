@@ -76,6 +76,22 @@ export const AVAILABLE_FONTS = [
   { id: 'font-mono', name: 'JetBrains Mono (Technical & Clean)' },
 ];
 
+const EVENT_CATEGORY_OPTIONS = [
+  { value: 'concert', label: 'Concert / Music' },
+  { value: 'party', label: 'Party / Nightlife' },
+  { value: 'mixer', label: 'Networking' },
+  { value: 'showcase', label: 'Conference / Showcase' },
+  { value: 'quiz', label: 'Workshop / Seminar' },
+  { value: 'engagement', label: 'Wedding / Engagement' },
+  { value: 'birthday', label: 'Birthday' },
+  { value: 'praise_concert', label: 'Church / Religious' },
+  { value: 'food', label: 'Community / Food' },
+  { value: 'pageantry', label: 'Arts & Culture' },
+  { value: 'other', label: 'Other' },
+];
+
+const EVENT_AGE_OPTIONS = ['All Ages', '13+', '16+', '18+', 'Adult Only'];
+
 export const CreateBook: React.FC = () => {
   const { user, profile, isAdmin, isMpr, isVendor, canCreateEvents, canCreateTickets, canCreateProducts, accountTier, loading: authLoading, refreshProfile, getOrCreateProfile } = useAuth();
   const navigate = useNavigate();
@@ -124,7 +140,12 @@ export const CreateBook: React.FC = () => {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [eventCategory, setEventCategory] = useState('other');
+  const [ageRestriction, setAgeRestriction] = useState('18+');
+  const [admissionMode, setAdmissionMode] = useState<'free' | 'ticketed'>('ticketed');
   const [capacity, setCapacity] = useState('100');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactInstructions, setContactInstructions] = useState('');
   const [tierType, setTierType] = useState('standard');
   const [isPatronOnly, setIsPatronOnly] = useState(false);
   const [salesStart, setSalesStart] = useState('');
@@ -204,6 +225,10 @@ export const CreateBook: React.FC = () => {
         if (parsed.pdfPrice && pdfPrice === '0') setPdfPrice(parsed.pdfPrice);
         if (parsed.coverImage && !coverImage) setCoverImage(parsed.coverImage);
         if (parsed.selectedFont) setSelectedFont(parsed.selectedFont);
+        if (parsed.admissionMode) setAdmissionMode(parsed.admissionMode);
+        if (parsed.contactEmail) setContactEmail(parsed.contactEmail);
+        if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
+        if (parsed.contactInstructions) setContactInstructions(parsed.contactInstructions);
         if (parsed.authorName && !authorName) setAuthorName(parsed.authorName);
         if (parsed.genreId && !genreId) setGenreId(parsed.genreId);
         if (parsed.activeStep) setActiveStep(parsed.activeStep);
@@ -251,6 +276,10 @@ export const CreateBook: React.FC = () => {
           isFree,
           coverImage,
           selectedFont,
+          admissionMode,
+          contactEmail,
+          contactPhone,
+          contactInstructions,
           authorName,
           genreId,
           activeStep,
@@ -262,7 +291,7 @@ export const CreateBook: React.FC = () => {
         console.warn('[CreateBook] Draft save error:', e);
       }
     }
-  }, [title, description, content, cards, price, pdfPrice, isFree, coverImage, selectedFont, authorName, genreId, activeStep, viewMode, draftStorageKey]);
+  }, [title, description, content, cards, price, pdfPrice, isFree, coverImage, selectedFont, admissionMode, contactEmail, contactPhone, contactInstructions, authorName, genreId, activeStep, viewMode, draftStorageKey]);
 
   // Card Insertion Anywhere & Card Management
   const handleInsertCard = (index: number, position: 'above' | 'below') => {
@@ -684,8 +713,19 @@ export const CreateBook: React.FC = () => {
           setState(data.state || '');
           setStartTime(formatDateTimeLocal(data.start_time));
           setEndTime(formatDateTimeLocal(data.end_time));
-          setCapacity(String(data.capacity || 100));
+          setCapacity(String(data.max_capacity || data.capacity || 100));
           setEventCategory(data.category || 'other');
+          setAgeRestriction(data.age_restriction || '18+');
+          setAdmissionMode(data.admission_mode || 'ticketed');
+          setContactEmail(data.contact_email || '');
+          setContactPhone(data.contact_phone || '');
+          setContactInstructions(data.contact_instructions || '');
+          setCards(Array.isArray(data.presentation_cards) ? data.presentation_cards : []);
+          if (data.theme_id) {
+            const theme = CARD_THEMES.find((item) => item.id === data.theme_id);
+            if (theme) setSelectedTheme(theme);
+          }
+          if (data.font_id) setSelectedFont(data.font_id);
           setBookStatus(data.status);
           setBookUserId(data.created_by || null);
           setActiveStep('cards');
@@ -704,10 +744,17 @@ export const CreateBook: React.FC = () => {
           }
           setTitle(data.name || '');
           setEventId(data.event_id || '');
-          setTierType(data.tier_type || 'standard');
+          setTierType(data.tier_type === 'patron_exclusive' ? 'patron' : (data.tier_type || 'standard'));
+          setDescription(data.description || '');
           setPrice(String((Number(data.price_kobo) || 0) / 100));
           setCapacity(String(data.capacity || 100));
           setIsPatronOnly(!!data.is_patron_only);
+          setCards(Array.isArray(data.perks) ? data.perks : []);
+          if (data.theme_id) {
+            const theme = CARD_THEMES.find((item) => item.id === data.theme_id);
+            if (theme) setSelectedTheme(theme);
+          }
+          if (data.font_id) setSelectedFont(data.font_id);
           setSalesStart(formatDateTimeLocal(data.sales_start));
           setSalesEnd(formatDateTimeLocal(data.sales_end));
           setBookStatus(data.status);
@@ -1404,13 +1451,22 @@ export const CreateBook: React.FC = () => {
             description: description.trim() || content.trim().slice(0, 200),
             category: eventCategory,
             cover_image: coverImage || null,
+            presentation_cards: cards,
+            admission_mode: admissionMode,
+            contact_email: contactEmail.trim() || null,
+            contact_phone: contactPhone.trim() || null,
+            contact_instructions: contactInstructions.trim() || null,
+            theme_id: selectedTheme.id,
+            font_id: selectedFont,
             venue_name: venueName.trim(),
             venue_address: venueAddress.trim() || null,
             city: city.trim() || null,
             state: state.trim() || null,
             start_time: parsedStart.toISOString(),
             end_time: parsedEnd ? parsedEnd.toISOString() : null,
-            capacity: parsedCapacity,
+            max_capacity: parsedCapacity,
+            age_restriction: ageRestriction,
+            is_patron_only: isPatronOnly,
             created_by: assignedUserId,
             status: isPublishing ? (isAdmin ? 'published' : 'under_review') : 'draft',
           };
@@ -1446,13 +1502,17 @@ export const CreateBook: React.FC = () => {
           const tierData = {
             event_id: eventId,
             name: title.trim(),
-            tier_type: tierType,
+            tier_type: tierType === 'patron' ? 'patron_exclusive' : tierType,
             price_kobo: Math.round(parsedPrice * 100),
             currency: 'NGN',
             capacity: parsedCapacity,
             is_patron_only: isPatronOnly,
             sales_start: parsedSalesStart ? parsedSalesStart.toISOString() : null,
             sales_end: parsedSalesEnd ? parsedSalesEnd.toISOString() : null,
+            description: description.trim() || null,
+            perks: cards,
+            theme_id: selectedTheme.id,
+            font_id: selectedFont,
           };
 
           let result;
@@ -2713,7 +2773,7 @@ export const CreateBook: React.FC = () => {
                           className="h-14 rounded-2xl bg-white border-slate-100 focus:ring-2 ring-indigo-500/20 font-bold transition-all"
                         />
                       </div>
-                      <div className="space-y-2">
+                      {isBookMode && <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Words Per Card: {wordsPerCard}</Label>
                         <select 
                           value={wordsPerCard}
@@ -2728,23 +2788,58 @@ export const CreateBook: React.FC = () => {
                           <option value="300">300 Words (In-depth)</option>
                           <option value="350">350 Words (Maximum)</option>
                         </select>
-                      </div>
+                      </div>}
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Admission / Ticketing</Label>
+                          <select value={admissionMode} onChange={(e) => setAdmissionMode(e.target.value as 'free' | 'ticketed')} className="w-full bg-white border-2 border-emerald-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-emerald-400 outline-none transition-all">
+                            <option value="free">No ticket required</option>
+                            <option value="ticketed">Ticketed event</option>
+                          </select>
+                        </div>
                       <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isTicketMode ? 'Tier Type' : isEventMode ? 'Category' : 'Genre (Categorization)'}</Label>
-                        <select 
-                          value={genreId}
-                          onChange={(e) => setGenreId(e.target.value)}
-                          className="w-full bg-white border-2 border-slate-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-indigo-400 outline-none transition-all"
-                        >
-                          <option value="">{isTicketMode ? 'Select tier type...' : isEventMode ? 'Select category...' : 'Select Genre...'}</option>
-                          {genres.map((g) => (
-                            <option key={g.id} value={g.id}>{g.name}</option>
-                          ))}
-                        </select>
+                        {isEventMode ? (
+                          <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} className="w-full bg-white border-2 border-slate-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-indigo-400 outline-none transition-all">
+                            {EVENT_CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        ) : (
+                          <select
+                            value={genreId}
+                            onChange={(e) => setGenreId(e.target.value)}
+                            className="w-full bg-white border-2 border-slate-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-indigo-400 outline-none transition-all"
+                          >
+                            <option value="">{isTicketMode ? 'Select tier type...' : 'Select Genre...'}</option>
+                            {genres.map((g) => (
+                              <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     </div>
 
-                    <div className="space-y-3 bg-indigo-50/10 p-6 rounded-3xl border border-indigo-100/30">
+                    {isEventMode && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-emerald-50/40 p-6 rounded-3xl border border-emerald-100">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Age / Access Category</Label>
+                          <select value={ageRestriction} onChange={(e) => setAgeRestriction(e.target.value)} className="w-full bg-white border-2 border-emerald-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-emerald-400 outline-none transition-all">
+                            {EVENT_AGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Event Description</Label>
+                          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What should guests know about this event?" className="h-14 rounded-2xl bg-white border-emerald-100 font-medium" />
+                        </div>
+                      </div>
+                    )}
+
+                    {isTicketMode && (
+                      <div className="space-y-2 bg-amber-50/40 p-6 rounded-3xl border border-amber-100">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-amber-800">Ticket Tier Description / Pass Information</Label>
+                        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe access, restrictions, and what this tier includes." className="min-h-[130px] rounded-2xl bg-white border-amber-100 font-medium" />
+                      </div>
+                    )}
+
+                    {isBookMode && <div className="space-y-3 bg-indigo-50/10 p-6 rounded-3xl border border-indigo-100/30">
                       <div className="flex items-center justify-between">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-1.5">
                           <FileText className="w-4 h-4 text-indigo-500" /> Optional: Upload PDF Document
@@ -2784,9 +2879,9 @@ export const CreateBook: React.FC = () => {
                           />
                         </label>
                       </div>
-                    </div>
+                    </div>}
 
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                    {isBookMode && <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">AI Polish & Formatting Switch</Label>
@@ -2816,9 +2911,9 @@ export const CreateBook: React.FC = () => {
                           </Button>
                         </div>
                       )}
-                    </div>
+                    </div>}
 
-                    <div className="space-y-2">
+                    {isBookMode && <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isBookMode ? 'Raw Source Material' : isEventMode ? 'Raw Event Source Material' : 'Tier Description & Source Material'}</Label>
@@ -2849,17 +2944,17 @@ export const CreateBook: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </div>}
                   </CardContent>
                   <CardFooter className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-3">
                     <Button variant="ghost" onClick={() => navigate('/dashboard')} className="rounded-xl h-12 px-6 font-bold">Discard</Button>
                     <Button 
-                      onClick={handleGenerate} 
-                      disabled={generating || !title.trim() || !content.trim()}
+                      onClick={() => isBookMode ? handleGenerate() : setActiveStep('cards')}
+                      disabled={generating || !title.trim() || (isBookMode && !content.trim())}
                       className="rounded-xl h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg gap-2"
                     >
                       {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                      {generating ? genStep : 'Generate Architecture'}
+                      {generating ? genStep : isBookMode ? 'Generate Architecture' : isEventMode ? 'Next: Event Performance' : 'Next: Tier Architecture'}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -2877,10 +2972,10 @@ export const CreateBook: React.FC = () => {
                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight italic">
-                    {isBookMode ? 'Card Architecture & Layout' : isEventMode ? 'Event Highlights / Program Cards' : 'Ticket Perks & Highlight Cards'}
+                    {isBookMode ? 'Card Architecture & Layout' : isEventMode ? 'Event Performance / Perfection' : 'Ticket Perks & Highlight Cards'}
                   </h2>
                   <p className="text-slate-500 font-medium text-xs mt-0.5">
-                    {isBookMode ? 'Modify text, manage images, reorder cards, or insert new cards anywhere.' : isEventMode ? 'Arrange and fine-tune the event program cards before publishing.' : 'Arrange and fine-tune the tier perks before publishing.'}
+                    {isBookMode ? 'Modify text, manage images, reorder cards, or insert new cards anywhere.' : isEventMode ? 'Make the event presentation-ready with its poster, description, venue, schedule, and access details.' : 'Arrange and fine-tune the tier perks before publishing.'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2967,10 +3062,48 @@ export const CreateBook: React.FC = () => {
                           </div>
                           <div className="space-y-2">
                             <Label className="text-xs font-black uppercase tracking-widest">Category</Label>
-                            <Input value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} className="h-12 rounded-xl bg-white" />
+                            <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold">
+                              {EVENT_CATEGORY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Age / Access Category</Label>
+                            <select value={ageRestriction} onChange={(e) => setAgeRestriction(e.target.value)} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold">
+                              {EVENT_AGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                            </select>
                           </div>
                         </>
                       )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {isEventMode && (
+                  <Card className="border border-emerald-100 shadow-sm rounded-3xl bg-white">
+                    <CardContent className="p-6 space-y-5">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="w-full md:w-56 aspect-[4/5] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                          {coverImage ? <img src={coverImage} alt="Event poster preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-slate-300" />}
+                        </div>
+                        <div className="flex-1 space-y-4 w-full">
+                          <div>
+                            <h3 className="text-lg font-black text-slate-900">Event Thumbnail / Poster</h3>
+                            <p className="text-xs text-slate-500 font-medium mt-1">Use the existing media upload to prepare the image shown in the EVVEX marketplace.</p>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <label className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black uppercase cursor-pointer">
+                              <Input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload('cover', e)} disabled={saving} />
+                              <Upload className="w-4 h-4" /> Upload Poster
+                            </label>
+                            {coverImage && <Button type="button" variant="outline" onClick={() => setCoverImage('')} className="rounded-xl border-red-200 text-red-600 text-xs font-black">Remove Poster</Button>}
+                          </div>
+                          <Input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="Or paste an image URL" className="h-11 rounded-xl bg-slate-50 border-slate-200 text-xs" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Event Description / Highlights</Label>
+                        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the experience, program, performers, speakers, and important instructions." className="min-h-[150px] rounded-2xl bg-slate-50 border-slate-100 font-medium" />
+                      </div>
                     </CardContent>
                   </Card>
                 )}
@@ -3103,7 +3236,7 @@ export const CreateBook: React.FC = () => {
                               }
                               setCards(newCards);
                             }}
-                            placeholder="Chapter (e.g. Chapter 1)"
+                            placeholder={isEventMode ? 'Program section label' : 'Chapter (e.g. Chapter 1)'}
                             className="w-1/2 md:w-1/3 font-bold text-[10px] uppercase tracking-widest text-indigo-600 border-none bg-indigo-50/70 h-8 rounded-lg px-3 focus-visible:ring-0"
                           />
                         </div>
@@ -3114,7 +3247,7 @@ export const CreateBook: React.FC = () => {
                             newCards[idx].title = e.target.value;
                             setCards(newCards);
                           }}
-                          placeholder="Card Title"
+                          placeholder={isEventMode ? 'Highlight / Program Title' : 'Card Title'}
                           className="font-black italic text-lg border-none bg-transparent p-0 h-auto focus-visible:ring-0 text-slate-900"
                         />
                         <Textarea 
@@ -3124,7 +3257,7 @@ export const CreateBook: React.FC = () => {
                             newCards[idx].text = e.target.value;
                             setCards(newCards);
                           }}
-                          placeholder="Card Content"
+                          placeholder={isEventMode ? 'Highlight, schedule, speaker, performer, or instruction' : 'Card Content'}
                           className="border-none bg-transparent p-0 min-h-[80px] focus-visible:ring-0 text-slate-600 font-medium leading-relaxed resize-none"
                         />
                       </CardContent>
@@ -3139,7 +3272,7 @@ export const CreateBook: React.FC = () => {
                   <Button onClick={() => setViewMode('review')} variant="outline" className="rounded-xl h-12 font-black border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-6 gap-2">
                     <Eye className="w-4 h-4" /> Open Review Interface
                   </Button>
-                  <Button onClick={() => setActiveStep('publish')} className="rounded-xl h-12 bg-slate-900 hover:bg-black text-white font-black px-8 shadow-lg">Finalize & Launch</Button>
+                  <Button onClick={() => setActiveStep('publish')} className="rounded-xl h-12 bg-slate-900 hover:bg-black text-white font-black px-8 shadow-lg">{isEventMode ? 'Next: Event Finalisation' : 'Finalize & Launch'}</Button>
                 </div>
               </div>
             </motion.div>
@@ -3157,10 +3290,10 @@ export const CreateBook: React.FC = () => {
                   <Settings2 className="w-10 h-10" />
                 </div>
                 <h2 className="text-4xl font-black text-slate-900 tracking-tight italic uppercase">
-                  {isBookMode ? 'eBook Setup & Launch' : isEventMode ? 'Event Launch & Economics' : 'Ticket Pass Design & Pricing'}
+                  {isBookMode ? 'eBook Setup & Launch' : isEventMode ? 'Event Finalisation' : 'Ticket Pass Design & Pricing'}
                 </h2>
                 <p className="text-slate-500 font-medium italic">
-                  {isBookMode ? 'Configure your pricing and author details before going live.' : isEventMode ? 'Configure the event atmosphere, poster, admission, and referral tracking.' : 'Configure the pass atmosphere, typography, description, and tier price.'}
+                  {isBookMode ? 'Configure your pricing and author details before going live.' : isEventMode ? 'Review the supported event information before publishing or submitting it.' : 'Configure the pass atmosphere, typography, description, and tier price.'}
                 </p>
               </div>
 
@@ -3254,7 +3387,7 @@ export const CreateBook: React.FC = () => {
                       
                       <div className="flex-1 space-y-4 w-full">
                         <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-                          This thumbnail is what displays on the main discovery bookshelf and author portfolios. A professional-looking cover dramatically increases click-through rates.
+                          {isEventMode ? 'This poster is used as the event image in the EVVEX marketplace.' : 'This thumbnail is what displays on the main discovery bookshelf and author portfolios. A professional-looking cover dramatically increases click-through rates.'}
                         </p>
                         
                         <div className="flex flex-wrap gap-3">
@@ -3294,8 +3427,20 @@ export const CreateBook: React.FC = () => {
                     </div>
                   </div>
 
+                  {isEventMode && <div className="space-y-4 p-6 bg-emerald-50/40 rounded-3xl border border-emerald-100">
+                    <div>
+                      <h3 className="text-lg font-black text-emerald-950">Event Contact</h3>
+                      <p className="text-xs text-emerald-800/70 font-medium mt-1">Give attendees a supported contact channel for event questions.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Event contact email" className="h-12 rounded-xl bg-white border-emerald-100" />
+                      <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="WhatsApp / contact number" className="h-12 rounded-xl bg-white border-emerald-100" />
+                    </div>
+                    <Textarea value={contactInstructions} onChange={(e) => setContactInstructions(e.target.value)} placeholder="Contact or support instructions" className="min-h-[90px] rounded-xl bg-white border-emerald-100" />
+                  </div>}
+
                   {/* Monetization - MORE PROMINENT */}
-                  <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner space-y-6">
+                  {!isEventMode && <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner space-y-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                       <div className="space-y-0.5">
                         <span className="text-xs font-black uppercase tracking-widest text-indigo-600 block">{isBookMode ? 'Offer Free Access' : 'Offer Free Admission'}</span>
@@ -3407,7 +3552,7 @@ export const CreateBook: React.FC = () => {
                         {isBookMode ? 'This eBook is designated as a FREE catalog entry and bypasses payment gateways completely.' : isEventMode ? 'This event offers free admission and bypasses payment gateways for admission.' : 'This ticket tier is free for eligible attendees.'}
                       </div>
                     )}
-                  </div>
+                  </div>}
 
                   {/* Book-only ownership and publishing controls */}
                   {isBookMode && isAdmin && (
@@ -3817,7 +3962,7 @@ export const CreateBook: React.FC = () => {
               {/* Final Metadata Verification Summary */}
               <Card className="border-none shadow-xl rounded-2xl sm:rounded-[2.5rem] bg-white p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 w-full">
                 <h3 className="text-lg sm:text-xl font-black text-slate-900 italic tracking-tight border-b border-slate-100 pb-3 sm:pb-4">
-                  Publication Overview & Metadata
+                  {isBookMode ? 'Publication Overview & Metadata' : isEventMode ? 'Event Overview & Metadata' : 'Ticket Pass Overview'}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div className="flex gap-3 sm:gap-4 items-center bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
@@ -3844,7 +3989,7 @@ export const CreateBook: React.FC = () => {
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">{isBookMode ? 'Access & Price:' : isEventMode ? 'Admission:' : 'Tier Price:'}</span>
                       <Badge className="font-black bg-emerald-100 text-emerald-800">
-                        {isFree ? 'FREE Catalog' : `₦${price}`}
+                        {isBookMode ? (isFree ? 'FREE Catalog' : `₦${price}`) : isEventMode ? 'Ticket tiers added after event' : (isFree ? 'FREE Tier' : `₦${price}`)}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center text-xs">
@@ -3865,7 +4010,7 @@ export const CreateBook: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    {mprReferralCode && (
+                    {isBookMode && mprReferralCode && (
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Referred by MPR:</span>
                         <span className="font-mono font-bold text-indigo-700">{mprReferralCode}</span>
