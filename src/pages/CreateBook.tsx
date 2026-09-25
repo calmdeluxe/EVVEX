@@ -89,6 +89,7 @@ export const CreateBook: React.FC = () => {
   const routeType = location.pathname === '/create-ticket' ? 'ticket' : location.pathname === '/create-event' ? 'event' : null;
   const requestedType = typeState || searchParams.get('type') || routeType;
   const contentType = requestedType || (pathId ? 'ebook' : (isVendor && !isAdmin && !isMpr ? 'product' : 'event'));
+  const isBookMode = contentType === 'ebook';
   const isEventMode = contentType === 'event';
   const isTicketMode = contentType === 'ticket';
 
@@ -1790,7 +1791,7 @@ export const CreateBook: React.FC = () => {
       <div className="page-container max-w-5xl mx-auto space-y-6 pb-20">
         
         {/* Admin Compliance & Decision Panel */}
-        {isAdmin && id && (
+        {isBookMode && isAdmin && id && (
           <Card className="border-indigo-200 bg-gradient-to-r from-indigo-50/50 via-indigo-50 to-white/80 rounded-[2rem] overflow-hidden shadow-lg border-2">
             <CardHeader className="bg-indigo-900 text-white p-8">
               <div className="flex items-center justify-between">
@@ -1870,20 +1871,22 @@ export const CreateBook: React.FC = () => {
         )}
 
         {/* Top Mode Switcher: Edit Interface vs Review Interface */}
-        {contentType === 'ebook' && (
+        {(isBookMode || isEventMode || isTicketMode) && (
           <div className="bg-slate-900 text-white p-4 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-800">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-indigo-600 rounded-2xl">
-                <BookOpen className="w-5 h-5 text-white" />
+                  {isBookMode ? <BookOpen className="w-5 h-5 text-white" /> : <Ticket className="w-5 h-5 text-white" />}
               </div>
               <div>
                 <h3 className="text-base font-black italic tracking-tight uppercase">
-                  {viewMode === 'edit' ? 'Manage & Edit Studio' : 'eBook Review & Pre-Publication Interface'}
+                  {viewMode === 'edit'
+                    ? (isBookMode ? 'Manage & Edit Studio' : isEventMode ? 'EVVEX Event Creation Studio' : 'EVVEX Ticket Tier Studio')
+                    : (isBookMode ? 'eBook Review & Pre-Publication Interface' : isEventMode ? 'Event Review Interface' : 'Ticket Review Interface')}
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">
                   {viewMode === 'edit'
-                    ? 'Modify raw content, cards, image prompts, and metadata freely.'
-                    : 'Review final formatted book before submitting for publication.'}
+                    ? (isBookMode ? 'Modify raw content, cards, image prompts, and metadata freely.' : isEventMode ? 'Draft event identity, logistics, cards, and launch settings.' : 'Configure the tier, quota, perks, and pass design.')
+                    : (isBookMode ? 'Review final formatted book before submitting for publication.' : isEventMode ? 'Review the event experience before publishing or submitting it.' : 'Review the digital ticket pass before publishing the tier.')}
                 </p>
               </div>
             </div>
@@ -1897,7 +1900,7 @@ export const CreateBook: React.FC = () => {
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
-                <Edit3 className="w-4 h-4" /> Manage eBook
+                <Edit3 className="w-4 h-4" /> {isBookMode ? 'Manage eBook' : 'Manage & Edit Studio'}
               </button>
               <button
                 type="button"
@@ -1914,8 +1917,8 @@ export const CreateBook: React.FC = () => {
           </div>
         )}
 
-        {/* Step Indicator - Only for eBooks in Edit Mode */}
-        {contentType === 'ebook' && viewMode === 'edit' && (
+        {/* Step Indicator - Only for supported creation studios in Edit Mode */}
+        {(isBookMode || isEventMode || isTicketMode) && viewMode === 'edit' && (
           <div className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
             {[
               { id: 'content', label: 'Drafting', icon: FileText },
@@ -2691,10 +2694,10 @@ export const CreateBook: React.FC = () => {
                       </div>
                       <div>
                         <CardTitle className="text-2xl font-black text-slate-900 tracking-tight italic">
-                          Event & Ticket Architect
+                          {isBookMode ? 'eBook Creation Studio' : isEventMode ? 'EVVEX Event Creation Studio' : 'EVVEX Ticket Tier Creation Studio'}
                         </CardTitle>
                         <CardDescription className="font-medium">
-                          Design your event experience, configure highlights, and set up ticket pricing tiers.
+                          {isBookMode ? 'Draft, structure, and prepare your eBook for publication.' : isEventMode ? 'Draft the event, arrange program cards, and configure launch economics.' : 'Create a ticket tier, define its quota and perks, and design the pass.'}
                         </CardDescription>
                       </div>
                     </div>
@@ -2702,9 +2705,9 @@ export const CreateBook: React.FC = () => {
                   <CardContent className="p-8 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Event Title</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isBookMode ? 'Title' : isEventMode ? 'Event Title' : 'Ticket / Tier Title'}</Label>
                         <Input 
-                          placeholder="e.g. EVVEX Annual Tech & Culture Summit, Live Gala Concert" 
+                          placeholder={isBookMode ? 'Enter a title' : isEventMode ? 'e.g. EVVEX Annual Tech & Culture Summit, Live Gala Concert' : 'e.g. VIP Access Pass'}
                           value={title} 
                           onChange={(e) => setTitle(e.target.value)}
                           className="h-14 rounded-2xl bg-white border-slate-100 focus:ring-2 ring-indigo-500/20 font-bold transition-all"
@@ -2727,13 +2730,13 @@ export const CreateBook: React.FC = () => {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Genre (Categorization)</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isTicketMode ? 'Tier Type' : isEventMode ? 'Category' : 'Genre (Categorization)'}</Label>
                         <select 
                           value={genreId}
                           onChange={(e) => setGenreId(e.target.value)}
                           className="w-full bg-white border-2 border-slate-100 rounded-2xl font-bold px-4 h-14 text-sm focus:border-indigo-400 outline-none transition-all"
                         >
-                          <option value="">Select Genre...</option>
+                          <option value="">{isTicketMode ? 'Select tier type...' : isEventMode ? 'Select category...' : 'Select Genre...'}</option>
                           {genres.map((g) => (
                             <option key={g.id} value={g.id}>{g.name}</option>
                           ))}
@@ -2818,7 +2821,7 @@ export const CreateBook: React.FC = () => {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Raw Source Material</Label>
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isBookMode ? 'Raw Source Material' : isEventMode ? 'Raw Event Source Material' : 'Tier Description & Source Material'}</Label>
                           <VoiceDictationButton
                             onTranscript={(transcript) =>
                               setContent((prev) => (prev ? `${prev} ${transcript}` : transcript))
@@ -2833,7 +2836,7 @@ export const CreateBook: React.FC = () => {
                       </div>
                       <div className="relative group">
                         <Textarea 
-                          placeholder="Paste your article, book chapters, or notes here... Minimum 5 sentences for best AI results." 
+                          placeholder={isBookMode ? 'Paste your article, book chapters, or notes here... Minimum 5 sentences for best AI results.' : isEventMode ? 'Paste the event brief, schedule notes, or program copy here...' : 'Describe this tier, access rules, and perks here...'}
                           value={content}
                           onChange={(e) => setContent(e.target.value)}
                           className="min-h-[400px] max-h-[800px] rounded-3xl bg-slate-50 border-slate-100 focus:ring-2 ring-indigo-500/20 font-medium leading-relaxed p-10 resize-none overflow-y-auto custom-scrollbar"
@@ -2874,10 +2877,10 @@ export const CreateBook: React.FC = () => {
                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight italic">
-                    {contentType === 'ebook' ? 'Card Architecture & Layout' : 'Event Highlights & Ticket Tiers'}
+                    {isBookMode ? 'Card Architecture & Layout' : isEventMode ? 'Event Highlights / Program Cards' : 'Ticket Perks & Highlight Cards'}
                   </h2>
                   <p className="text-slate-500 font-medium text-xs mt-0.5">
-                    {contentType === 'ebook' ? 'Modify text, manage images, reorder cards, or insert new cards anywhere.' : 'Preview and fine-tune your event highlights and ticket tiers before publishing.'}
+                    {isBookMode ? 'Modify text, manage images, reorder cards, or insert new cards anywhere.' : isEventMode ? 'Arrange and fine-tune the event program cards before publishing.' : 'Arrange and fine-tune the tier perks before publishing.'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2900,7 +2903,7 @@ export const CreateBook: React.FC = () => {
                       {isTicketMode ? (
                         <>
                           <div className="md:col-span-2 space-y-2">
-                            <Label className="text-xs font-black uppercase tracking-widest">Event</Label>
+                            <Label className="text-xs font-black uppercase tracking-widest">Parent Event</Label>
                             <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold">
                               <option value="">Select an event</option>
                               {eventOptions.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
@@ -3153,8 +3156,12 @@ export const CreateBook: React.FC = () => {
                 <div className="w-20 h-20 bg-indigo-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-indigo-600 shadow-sm border border-indigo-100">
                   <Settings2 className="w-10 h-10" />
                 </div>
-                <h2 className="text-4xl font-black text-slate-900 tracking-tight italic uppercase">eBook Setup & Launch</h2>
-                <p className="text-slate-500 font-medium italic">Configure your pricing and author details before going live.</p>
+                <h2 className="text-4xl font-black text-slate-900 tracking-tight italic uppercase">
+                  {isBookMode ? 'eBook Setup & Launch' : isEventMode ? 'Event Launch & Economics' : 'Ticket Pass Design & Pricing'}
+                </h2>
+                <p className="text-slate-500 font-medium italic">
+                  {isBookMode ? 'Configure your pricing and author details before going live.' : isEventMode ? 'Configure the event atmosphere, poster, admission, and referral tracking.' : 'Configure the pass atmosphere, typography, description, and tier price.'}
+                </p>
               </div>
 
               <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white/80 backdrop-blur">
@@ -3188,8 +3195,8 @@ export const CreateBook: React.FC = () => {
 
                   {/* Font Selector */}
                   <div className="space-y-4">
-                    <Label className="text-xs font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
-                      <Settings2 className="w-4 h-4" /> Book Typography (Font Face)
+                      <Label className="text-xs font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
+                      <Settings2 className="w-4 h-4" /> {isBookMode ? 'Book Typography (Font Face)' : isEventMode ? 'Event Typography (Font Face)' : 'Pass Typography (Font Face)'}
                     </Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {AVAILABLE_FONTS.map(f => (
@@ -3213,7 +3220,7 @@ export const CreateBook: React.FC = () => {
                   {/* eBook Thumbnail Cover Selection */}
                   <div className="space-y-4">
                     <Label className="text-xs font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" /> Book Cover Thumbnail
+                      <ImageIcon className="w-4 h-4" /> {isBookMode ? 'Book Cover Thumbnail' : isEventMode ? 'Event Poster / Cover' : 'Pass Cover / Visual'}
                     </Label>
                     <div className="flex flex-col sm:flex-row gap-6 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner items-center">
                       <div 
@@ -3225,7 +3232,7 @@ export const CreateBook: React.FC = () => {
                             <img 
                               src={coverImage} 
                               className="absolute inset-0 w-full h-full object-cover" 
-                              alt="eBook Cover preview" 
+                              alt={isBookMode ? 'eBook Cover preview' : isEventMode ? 'Event poster preview' : 'Ticket pass visual preview'}
                               referrerPolicy="no-referrer"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center text-white">
@@ -3291,8 +3298,8 @@ export const CreateBook: React.FC = () => {
                   <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner space-y-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                       <div className="space-y-0.5">
-                        <span className="text-xs font-black uppercase tracking-widest text-indigo-600 block">Offer Free Admission</span>
-                        <span className="text-[10px] text-slate-400 font-bold block">Allow patrons to claim passes or attend this event for free</span>
+                        <span className="text-xs font-black uppercase tracking-widest text-indigo-600 block">{isBookMode ? 'Offer Free Access' : 'Offer Free Admission'}</span>
+                        <span className="text-[10px] text-slate-400 font-bold block">{isBookMode ? 'Make this title free for readers.' : isEventMode ? 'Allow patrons to claim passes or attend this event for free.' : 'Make this tier free while preserving its access rules.'}</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none">
                         <input
@@ -3317,7 +3324,7 @@ export const CreateBook: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in zoom-in-95 duration-200">
                           <div className="space-y-3">
                             <Label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                              <Ticket className="w-4 h-4 text-indigo-600" /> Standard Ticket Price
+                              <Ticket className="w-4 h-4 text-indigo-600" /> {isTicketMode ? 'Tier Price' : 'Standard Ticket Price'}
                             </Label>
                             <div className="relative">
                               <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xl">₦</span>
@@ -3331,7 +3338,7 @@ export const CreateBook: React.FC = () => {
                           </div>
                           <div className="space-y-3">
                             <Label className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                              <Ticket className="w-4 h-4 text-amber-500" /> VIP / Premium Ticket Price
+                              <Ticket className="w-4 h-4 text-amber-500" /> {isTicketMode ? 'Premium Reference Price' : 'VIP / Premium Ticket Price'}
                             </Label>
                             <div className="relative">
                               <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-xl">₦</span>
@@ -3397,13 +3404,13 @@ export const CreateBook: React.FC = () => {
                       </>
                     ) : (
                       <div className="text-center p-4 bg-indigo-50 border border-indigo-100/50 rounded-2xl text-xs text-indigo-700 font-bold uppercase tracking-tight">
-                        🎉 This book is designated as a FREE catalog entry and bypasses payment gateways completely.
+                        {isBookMode ? 'This eBook is designated as a FREE catalog entry and bypasses payment gateways completely.' : isEventMode ? 'This event offers free admission and bypasses payment gateways for admission.' : 'This ticket tier is free for eligible attendees.'}
                       </div>
                     )}
                   </div>
 
-                  {/* Admin Author Assignment Selector */}
-                  {isAdmin && (
+                  {/* Book-only ownership and publishing controls */}
+                  {isBookMode && isAdmin && (
                     <div className="space-y-3 p-6 bg-indigo-50/80 rounded-[2.5rem] border border-indigo-100 shadow-sm">
                       <div className="flex items-center justify-between">
                         <Label className="text-xs font-black uppercase tracking-widest text-indigo-700 flex items-center gap-2">
@@ -3436,7 +3443,7 @@ export const CreateBook: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="space-y-3">
+                  {isBookMode && <div className="space-y-3">
                     <Label className="text-xs font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
                       <User className="w-4 h-4" /> Author Pen Name
                     </Label>
@@ -3446,10 +3453,10 @@ export const CreateBook: React.FC = () => {
                       onChange={(e) => setAuthorName(e.target.value)}
                       className="h-16 rounded-2xl bg-slate-50 border-slate-100 font-black text-lg focus:ring-primary px-6"
                     />
-                  </div>
+                  </div>}
 
                   {/* Strict Publishing Model & Content Type Configuration */}
-                  <div className="p-8 bg-slate-50/80 rounded-[2.5rem] border border-slate-200/80 space-y-6 shadow-sm">
+                  {isBookMode && <div className="p-8 bg-slate-50/80 rounded-[2.5rem] border border-slate-200/80 space-y-6 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-5">
                       <div>
                         <div className="flex items-center gap-2">
@@ -3673,7 +3680,7 @@ export const CreateBook: React.FC = () => {
                         Protected Escrow
                       </Badge>
                     </div>
-                  </div>
+                  </div>}
                 </CardContent>
                 <CardFooter className="p-4 sm:p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row w-full gap-3 sm:gap-4">
@@ -3715,9 +3722,9 @@ export const CreateBook: React.FC = () => {
                     <Badge className="bg-emerald-500 text-slate-950 font-black uppercase tracking-widest text-[10px] mb-2">
                       Pre-Publication Review Mode
                     </Badge>
-                    <h2 className="text-2xl sm:text-3xl font-black italic tracking-tight">{title || 'Untitled Book Review'}</h2>
+                    <h2 className="text-2xl sm:text-3xl font-black italic tracking-tight">{title || (isBookMode ? 'Untitled Book Review' : isEventMode ? 'Untitled Event Review' : 'Untitled Ticket Review')}</h2>
                     <p className="text-slate-300 text-xs font-semibold mt-1">
-                      Inspect the final reader experience, verify card pagination, formatting, and metadata before submitting.
+                      {isBookMode ? 'Inspect the final reader experience, verify card pagination, formatting, and metadata before submitting.' : isEventMode ? 'Review the event poster, program cards, venue, schedule, category, and admission before submitting.' : 'Review the digital pass, tier price, access restrictions, and perks before publishing.'}
                     </p>
                   </div>
                   {(!searchParams.get('mode') || searchParams.get('mode') !== 'review') && !published && (
@@ -3738,7 +3745,7 @@ export const CreateBook: React.FC = () => {
                   <CardHeader className="bg-slate-50 border-b border-slate-100 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-indigo-600 text-white font-black text-xs">
-                        Card Reader Simulator ({previewCardIdx + 1}/{cards.length})
+                        {isBookMode ? 'Card Reader Simulator' : isEventMode ? 'Event Card Simulator' : 'Ticket Pass Simulator'} ({previewCardIdx + 1}/{cards.length})
                       </Badge>
                       {cards[previewCardIdx]?.chapter && (
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider truncate max-w-[200px]">
@@ -3829,28 +3836,28 @@ export const CreateBook: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Title</span>
                       <h4 className="font-black text-slate-900 text-sm truncate">{title || 'Untitled'}</h4>
-                      <span className="text-xs text-slate-500 font-medium truncate block">By {authorName || 'Author'}</span>
+                        <span className="text-xs text-slate-500 font-medium truncate block">{isBookMode ? `By ${authorName || 'Author'}` : isEventMode ? `${venueName || 'Venue pending'}${city ? ` · ${city}` : ''}` : `${tierType.replace('_', ' ')} tier${isPatronOnly ? ' · Patron-only' : ''}`}</span>
                     </div>
                   </div>
 
                   <div className="space-y-2 sm:space-y-3 bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl flex flex-col justify-center">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Access & Price:</span>
+                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">{isBookMode ? 'Access & Price:' : isEventMode ? 'Admission:' : 'Tier Price:'}</span>
                       <Badge className="font-black bg-emerald-100 text-emerald-800">
                         {isFree ? 'FREE Catalog' : `₦${price}`}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Word Count & Length:</span>
-                      <span className="font-extrabold text-slate-800">{totalWordCount.toLocaleString()} Words ({cards.length} Cards)</span>
+                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">{isBookMode ? 'Word Count & Length:' : isEventMode ? 'Event Details:' : 'Access & Perks:'}</span>
+                      <span className="font-extrabold text-slate-800 text-right">{isBookMode ? `${totalWordCount.toLocaleString()} Words (${cards.length} Cards)` : isEventMode ? `${startTime ? new Date(startTime).toLocaleString() : 'Schedule pending'} · ${eventCategory}` : `${cards.length} perks · ${isPatronOnly ? 'Patron-only' : 'General access'}`}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs">
+                    {isBookMode && <div className="flex justify-between items-center text-xs">
                       <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Publishing Model:</span>
                       <Badge className={`font-black ${publishingType === 'ipc' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white'}`}>
                         {publishingType === 'ipc' ? 'IPC (70% Author / 30% Plat)' : 'FC (30% Author / 50% Plat / 20% MPR)'}
                       </Badge>
-                    </div>
-                    {publishingType === 'ipc' && (
+                    </div>}
+                    {isBookMode && publishingType === 'ipc' && (
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Legal Declarations:</span>
                         <span className="font-bold text-emerald-600 text-[11px] flex items-center gap-1">
@@ -3872,7 +3879,7 @@ export const CreateBook: React.FC = () => {
                   {published && !isAdmin ? (
                     <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-900 p-4 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
                       <span className="text-xs font-bold flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> This event & ticket listing is published and live in the store. Edits are locked to preserve content consistency.
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> {isBookMode ? 'This eBook is published and live in the store. Edits are locked to preserve content consistency.' : isEventMode ? 'This event is published and live. Edits are locked to preserve content consistency.' : 'This ticket tier is published and live. Edits are locked to preserve content consistency.'}
                       </span>
                       <Button onClick={() => navigate('/dashboard')} variant="outline" className="text-xs font-black rounded-xl w-full sm:w-auto shrink-0">
                         Return to Management Dashboard
@@ -3895,7 +3902,7 @@ export const CreateBook: React.FC = () => {
                         className="w-full sm:flex-[2] min-h-[44px] h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-wider shadow-xl shadow-emerald-100 gap-2"
                       >
                         {publishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                        {publishing ? (isAdmin ? 'Publishing...' : 'Submitting...') : (isAdmin ? 'Finalize & Publish Event / Ticket' : 'Submit Event / Ticket for Admin Review')}
+                        {publishing ? (isAdmin ? 'Publishing...' : 'Submitting...') : (isBookMode ? (isAdmin ? 'Publish Book' : 'Submit Book for Admin Review') : isEventMode ? (isAdmin ? 'Finalize & Publish Event' : 'Submit Event for Admin Review') : (isAdmin ? 'Publish Ticket Tier' : 'Submit Ticket Tier for Admin Review'))}
                       </Button>
                     </>
                   )}
