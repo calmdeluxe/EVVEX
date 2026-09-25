@@ -23,7 +23,7 @@ export const AdminReviews: React.FC = () => {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>('pending_review');
+  const [filterStatus, setFilterStatus] = useState<string>('under_review');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null);
   const [selectedEventForPreview, setSelectedEventForPreview] = useState<any | null>(null);
@@ -47,7 +47,7 @@ export const AdminReviews: React.FC = () => {
       if (error) throw error;
 
       if (dbEvents) {
-        const organizerIds = [...new Set(dbEvents.map((v: any) => v.organizer_id))].filter(Boolean);
+        const organizerIds = [...new Set(dbEvents.map((v: any) => v.created_by || v.organizer_id))].filter(Boolean);
         let userMap: Record<string, any> = {};
         if (organizerIds.length > 0) {
           const { data: profilesData } = await supabase
@@ -61,10 +61,13 @@ export const AdminReviews: React.FC = () => {
             }, {});
           }
         }
-        const mappedEvents = dbEvents.map((e: any) => ({
-          ...e,
-          organizer: userMap[e.organizer_id] || { email: 'Unknown Host', full_name: 'Unknown Host' }
-        }));
+        const mappedEvents = dbEvents.map((e: any) => {
+          const hostId = e.created_by || e.organizer_id;
+          return {
+            ...e,
+            organizer: userMap[hostId] || { email: 'Unknown Host', full_name: 'Unknown Host' }
+          };
+        });
         setSubmissions(mappedEvents);
       }
     } catch (err) {
@@ -196,7 +199,7 @@ export const AdminReviews: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
-            {['pending_review', 'published', 'draft', 'cancelled', 'all'].map((status) => (
+            {['under_review', 'published', 'draft', 'cancelled', 'all'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
@@ -218,7 +221,7 @@ export const AdminReviews: React.FC = () => {
         ) : filteredEvents.length === 0 ? (
           <div className="p-12 text-center bg-white rounded-3xl border border-slate-100">
             <Sparkles className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-500 font-bold">No events matching status filter "{filterStatus}".</p>
+            <p className="text-slate-500 font-bold">No events matching status filter "{filterStatus.replace('_', ' ')}".</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -233,13 +236,13 @@ export const AdminReviews: React.FC = () => {
                     <Badge className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${
                       evt.status === 'published' 
                         ? 'bg-emerald-100 text-emerald-800' 
-                        : evt.status === 'pending_review' 
+                        : (evt.status === 'under_review' || evt.status === 'pending_review')
                         ? 'bg-amber-100 text-amber-800 animate-pulse' 
                         : evt.status === 'cancelled'
                         ? 'bg-red-100 text-red-800'
                         : 'bg-slate-100 text-slate-700'
                     }`}>
-                      {evt.status || 'draft'}
+                      {(evt.status || 'draft').replace('_', ' ')}
                     </Badge>
                     <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
