@@ -3,13 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   CalendarDays,
+  CheckCircle2,
   Clock3,
   Download,
   Heart,
   MapPin,
   Menu,
+  QrCode,
   Search,
+  ShieldCheck,
   Smartphone,
+  Sparkles,
   Star,
   Ticket,
   X,
@@ -357,181 +361,296 @@ export const EventLandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column (40%): Dark luxury portrait aesthetic */}
+          {/* Right Column (40%): Authentic EVVEX VIP Digital Pass (no stock photos) */}
           <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[420px] aspect-[4/5] rounded-[32px] overflow-hidden border border-[rgba(244,228,188,0.2)] bg-gradient-to-br from-[#0F1A2E] to-[#1A2540] shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
-              <img
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1100&q=85"
-                alt="Sophisticated evening guest"
-                className="size-full object-cover object-top filter brightness-95 contrast-105"
-              />
-              {/* Subtle luxury vignette & rim-lighting overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1E] via-[#0A0F1E]/20 to-transparent" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(244,228,188,0.18)_0%,transparent_60%)]" />
+            <div className="relative w-full max-w-[420px] rounded-[32px] overflow-hidden border border-[rgba(244,228,188,0.25)] bg-gradient-to-b from-[#0F1A2E] via-[#0A0F1E] to-[#0F1A2E] shadow-[0_25px_60px_rgba(0,0,0,0.6)] p-6 sm:p-8 flex flex-col justify-between">
+              {/* Luxury ambient rim-lighting */}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(244,228,188,0.12)_0%,transparent_60%)]" />
 
-              {/* Bottom caption badge */}
-              <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between text-white/90">
+              {/* Pass Header */}
+              <div className="relative z-10 flex items-center justify-between border-b border-[rgba(244,228,188,0.15)] pb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid size-8 place-items-center rounded-lg bg-[rgba(244,228,188,0.1)] border border-[rgba(244,228,188,0.2)]">
+                    <Sparkles className="size-4 text-[#D4B483]" />
+                  </div>
+                  <div>
+                    <span className="font-serif font-bold text-white tracking-widest text-sm">EVVEX</span>
+                    <span className="block text-[9px] uppercase tracking-[0.2em] text-[#D4B483] font-semibold">Live Pass</span>
+                  </div>
+                </div>
+
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Verified Gate
+                </span>
+              </div>
+
+              {/* Pass Main Graphic: QR Scanner & Real Details */}
+              <div className="relative z-10 my-6 flex flex-col items-center justify-center rounded-2xl border border-[rgba(244,228,188,0.15)] bg-[#0A0F1E]/80 p-6 backdrop-blur text-center">
+                <div className="relative p-3 rounded-xl border border-[#F4E4BC]/30 bg-[rgba(244,228,188,0.05)] shadow-[0_0_30px_rgba(244,228,188,0.1)]">
+                  <QrCode className="size-24 text-[#F5E6C8]" />
+                  <div className="absolute inset-0 border border-dashed border-[#F4E4BC]/40 rounded-xl" />
+                </div>
+
+                <p className="mt-4 font-serif text-lg font-medium text-white">
+                  {showcaseEvent ? showcaseEvent.title : 'Direct Admission Protocol'}
+                </p>
+                <p className="mt-1 text-xs text-slate-400 max-w-xs">
+                  {showcaseEvent
+                    ? `${showcaseEvent.venue_name || showcaseEvent.city || 'Nigeria'} · ${dateLabel(showcaseEvent.start_time)}`
+                    : 'Encrypted single-scan gate pass with real-time attendee verification.'}
+                </p>
+              </div>
+
+              {/* Perforation dashed line */}
+              <div className="relative my-2 flex items-center justify-between">
+                <span className="absolute -left-10 size-5 rounded-r-full bg-[#0A0F1E] border-r border-[rgba(244,228,188,0.25)]" />
+                <div className="w-full border-b border-dashed border-[rgba(244,228,188,0.2)]" />
+                <span className="absolute -right-10 size-5 rounded-l-full bg-[#0A0F1E] border-l border-[rgba(244,228,188,0.25)]" />
+              </div>
+
+              {/* Pass Footer Details */}
+              <div className="relative z-10 pt-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#D4B483]">
-                    Premier Live Access
+                    Access Tier
                   </p>
-                  <p className="font-serif text-lg font-medium text-white">Experience EVVEX</p>
+                  <p className="text-sm font-semibold text-white">
+                    {showcaseEvent?.category || 'VIP / Priority Entry'}
+                  </p>
                 </div>
-                <div className="grid size-9 place-items-center rounded-full border border-white/20 bg-white/10 backdrop-blur-sm">
-                  <ArrowRight className="size-4 text-[#F5E6C8]" />
-                </div>
+
+                <Link
+                  to={showcaseEvent ? `/events/${showcaseEvent.id}` : '/events'}
+                  className="inline-flex items-center gap-2 rounded-full bg-[rgba(244,228,188,0.1)] border border-[#F4E4BC]/40 px-4 py-2 text-xs font-semibold text-[#F5E6C8] hover:bg-[rgba(244,228,188,0.2)] transition"
+                >
+                  <span>{showcaseEvent ? 'Get Ticket' : 'Discover'}</span>
+                  <ArrowRight className="size-3.5 text-[#F5E6C8]" />
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 2 — TICKET SHOWCASE ── */}
+      {/* ── SECTION 2 — REAL EVENT SHOWCASE / HOST FEATURES ── */}
       <section className="relative overflow-hidden bg-[#0F1A2E] py-20 md:py-28 border-y border-[rgba(244,228,188,0.1)]">
         {/* Subtle bokeh light streaks */}
         <div className="pointer-events-none absolute -top-24 left-1/3 size-80 rounded-full bg-[#F4E4BC]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 right-1/4 size-96 rounded-full bg-[#D4B483]/10 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl px-6 sm:px-8 flex flex-col items-center">
-          {/* Floating ticket cards composition */}
-          <div className="relative w-full max-w-4xl flex items-center justify-center min-h-[460px] py-6">
-            {/* Left background card (tilted -5deg) */}
-            <div
-              className="hidden sm:block absolute left-8 md:left-16 z-0 w-64 md:w-72 bg-[#EFDFB8]/60 backdrop-blur-md rounded-2xl p-5 shadow-xl border border-[#F4E4BC]/30 text-[#0A0F1E] transform -rotate-6 scale-90 opacity-70 pointer-events-none select-none transition-all duration-300"
-              aria-hidden="true"
-            >
-              <div className="aspect-[16/9] w-full rounded-xl bg-[#0A0F1E]/20 overflow-hidden mb-3">
-                <img
-                  src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80"
-                  alt=""
-                  className="size-full object-cover filter blur-[0.5px]"
-                />
-              </div>
-              <h4 className="font-serif text-lg font-medium text-[#0A0F1E]/80">Linear Events</h4>
-              <p className="text-[11px] text-[#4A4A4A]">Secret Garden · Lagos</p>
-              <div className="mt-4 pt-3 border-t border-[#0A0F1E]/15 flex items-center justify-between text-xs font-semibold">
-                <span className="flex items-center gap-1 text-[#0A0F1E]/70">★ 4.9</span>
-                <span>NGN 20,000</span>
-              </div>
-            </div>
-
-            {/* Right background card (tilted +5deg) */}
-            <div
-              className="hidden sm:block absolute right-8 md:right-16 z-0 w-64 md:w-72 bg-[#EFDFB8]/60 backdrop-blur-md rounded-2xl p-5 shadow-xl border border-[#F4E4BC]/30 text-[#0A0F1E] transform rotate-6 scale-90 opacity-70 pointer-events-none select-none transition-all duration-300"
-              aria-hidden="true"
-            >
-              <div className="aspect-[16/9] w-full rounded-xl bg-[#0A0F1E]/20 overflow-hidden mb-3">
-                <img
-                  src="https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=600&q=80"
-                  alt=""
-                  className="size-full object-cover filter blur-[0.5px]"
-                />
-              </div>
-              <h4 className="font-serif text-lg font-medium text-[#0A0F1E]/80">VIP Afterdark</h4>
-              <p className="text-[11px] text-[#4A4A4A]">Skyline Terrace · Abuja</p>
-              {/* Barcode simulation */}
-              <div className="mt-4 pt-3 border-t border-[#0A0F1E]/15 flex items-center justify-between">
-                <div className="flex gap-[3px] h-6 items-end opacity-40">
-                  <span className="w-1 bg-[#0A0F1E] h-full" />
-                  <span className="w-0.5 bg-[#0A0F1E] h-4" />
-                  <span className="w-1.5 bg-[#0A0F1E] h-full" />
-                  <span className="w-0.5 bg-[#0A0F1E] h-5" />
-                  <span className="w-1 bg-[#0A0F1E] h-full" />
-                  <span className="w-0.5 bg-[#0A0F1E] h-3" />
-                  <span className="w-1 bg-[#0A0F1E] h-full" />
-                </div>
-                <span className="text-xs font-semibold">NGN 35,000</span>
-              </div>
-            </div>
-
-            {/* Middle elevated showcase card (Cream #F5E6C8 with high glow) */}
-            <div className="relative z-10 w-full max-w-[340px] sm:max-w-[370px] bg-[#F5E6C8] text-[#0A0F1E] rounded-2xl p-6 shadow-2xl border border-[#F4E4BC]/80 shadow-[0_0_60px_rgba(244,228,188,0.3)] transition transform hover:scale-[1.02] duration-300">
-              {/* Event thumbnail */}
-              <div className="aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#0A0F1E]/10 mb-4 shadow-sm relative">
-                <img
-                  src={
-                    showcaseEvent?.cover_image ||
-                    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80'
-                  }
-                  alt={showcaseEvent?.title || 'Featured Event'}
-                  className="size-full object-cover"
-                />
-                <span className="absolute top-2.5 left-2.5 rounded-full bg-[#0A0F1E] px-2.5 py-0.5 text-[10px] font-bold text-[#F5E6C8] uppercase tracking-wider">
-                  {showcaseEvent?.category || 'VIP Experience'}
-                </span>
-              </div>
-
-              {/* Title & info */}
-              <h3 className="font-serif text-xl sm:text-2xl font-medium text-[#0A0F1E] line-clamp-1">
-                {showcaseEvent?.title || 'Ethereal Horizons Live'}
-              </h3>
-              <p className="mt-1 text-xs text-[#4A4A4A] line-clamp-1">
-                {showcaseEvent ? `${showcaseEvent.venue_name || 'Eko Hotel Convention'} · ${showcaseEvent.city || 'Lagos'}` : 'Grand Pavilion · Victoria Island, Lagos'}
-              </p>
-              <p className="mt-1 text-[11px] text-[#4A4A4A]/80 font-medium">
-                {showcaseEvent ? dateLabel(showcaseEvent.start_time) : 'Saturday, Oct 24 · 7:00 PM'}
-              </p>
-
-              {/* Ticket perforation dashed line */}
-              <div className="relative my-4 flex items-center justify-between">
-                <span className="absolute -left-6 size-4 rounded-r-full bg-[#0F1A2E]" />
-                <div className="w-full border-b border-dashed border-[#0A0F1E]/25" />
-                <span className="absolute -right-6 size-4 rounded-l-full bg-[#0F1A2E]" />
-              </div>
-
-              {/* Barcode strip & bottom row */}
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => showcaseEvent && toggleLike(e, showcaseEvent.id)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#0A0F1E] hover:text-red-600 transition"
+          {events.length > 0 ? (
+            /* REAL EVENTS SHOWCASE */
+            <>
+              <div className="relative w-full max-w-4xl flex items-center justify-center min-h-[460px] py-6">
+                {/* Left card (only rendered if a 2nd real event exists) */}
+                {events[1] && (
+                  <Link
+                    to={`/events/${events[1].id}`}
+                    className="hidden sm:block absolute left-8 md:left-16 z-0 w-64 md:w-72 bg-[#EFDFB8]/90 backdrop-blur-md rounded-2xl p-5 shadow-xl border border-[#F4E4BC]/30 text-[#0A0F1E] transform -rotate-6 scale-90 opacity-80 hover:opacity-100 transition-all duration-300"
                   >
-                    <Heart
-                      className={`size-4 ${
-                        showcaseEvent && likedEvents[showcaseEvent.id]
-                          ? 'fill-red-500 text-red-500'
-                          : 'fill-[#0A0F1E]/20 text-[#0A0F1E]'
-                      }`}
-                    />
-                    <span>494</span>
-                  </button>
+                    <div className="aspect-[16/9] w-full rounded-xl bg-[#0A0F1E]/20 overflow-hidden mb-3">
+                      {events[1].cover_image ? (
+                        <img
+                          src={events[1].cover_image}
+                          alt={events[1].title}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="size-full flex items-center justify-center bg-[#0A0F1E]/10">
+                          <Ticket className="size-8 text-[#0A0F1E]/40" />
+                        </div>
+                      )}
+                    </div>
+                    <h4 className="font-serif text-lg font-medium text-[#0A0F1E] line-clamp-1">{events[1].title}</h4>
+                    <p className="text-[11px] text-[#4A4A4A] line-clamp-1">
+                      {events[1].venue_name || events[1].city || 'Nigeria'}
+                    </p>
+                    <div className="mt-4 pt-3 border-t border-[#0A0F1E]/15 flex items-center justify-between text-xs font-semibold">
+                      <span className="text-[#0A0F1E]/70">{dateLabel(events[1].start_time)}</span>
+                      <span>{priceLabel(events[1].event_ticket_tiers?.[0]?.price_kobo ?? events[1].min_price_kobo)}</span>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Right card (only rendered if a 3rd real event exists) */}
+                {events[2] && (
+                  <Link
+                    to={`/events/${events[2].id}`}
+                    className="hidden sm:block absolute right-8 md:right-16 z-0 w-64 md:w-72 bg-[#EFDFB8]/90 backdrop-blur-md rounded-2xl p-5 shadow-xl border border-[#F4E4BC]/30 text-[#0A0F1E] transform rotate-6 scale-90 opacity-80 hover:opacity-100 transition-all duration-300"
+                  >
+                    <div className="aspect-[16/9] w-full rounded-xl bg-[#0A0F1E]/20 overflow-hidden mb-3">
+                      {events[2].cover_image ? (
+                        <img
+                          src={events[2].cover_image}
+                          alt={events[2].title}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="size-full flex items-center justify-center bg-[#0A0F1E]/10">
+                          <Ticket className="size-8 text-[#0A0F1E]/40" />
+                        </div>
+                      )}
+                    </div>
+                    <h4 className="font-serif text-lg font-medium text-[#0A0F1E] line-clamp-1">{events[2].title}</h4>
+                    <p className="text-[11px] text-[#4A4A4A] line-clamp-1">
+                      {events[2].venue_name || events[2].city || 'Nigeria'}
+                    </p>
+                    <div className="mt-4 pt-3 border-t border-[#0A0F1E]/15 flex items-center justify-between text-xs font-semibold">
+                      <span className="text-[#0A0F1E]/70">{dateLabel(events[2].start_time)}</span>
+                      <span>{priceLabel(events[2].event_ticket_tiers?.[0]?.price_kobo ?? events[2].min_price_kobo)}</span>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Middle elevated real showcase card */}
+                {showcaseEvent && (
+                  <div className="relative z-10 w-full max-w-[340px] sm:max-w-[370px] bg-[#F5E6C8] text-[#0A0F1E] rounded-2xl p-6 shadow-2xl border border-[#F4E4BC]/80 shadow-[0_0_60px_rgba(244,228,188,0.3)] transition transform hover:scale-[1.02] duration-300">
+                    <div className="aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#0A0F1E]/10 mb-4 shadow-sm relative">
+                      {showcaseEvent.cover_image ? (
+                        <img
+                          src={showcaseEvent.cover_image}
+                          alt={showcaseEvent.title}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="size-full flex items-center justify-center bg-[#0A0F1E]/10">
+                          <Ticket className="size-12 text-[#0A0F1E]/30" />
+                        </div>
+                      )}
+                      <span className="absolute top-2.5 left-2.5 rounded-full bg-[#0A0F1E] px-2.5 py-0.5 text-[10px] font-bold text-[#F5E6C8] uppercase tracking-wider">
+                        {showcaseEvent.category || 'Featured Event'}
+                      </span>
+                    </div>
+
+                    <h3 className="font-serif text-xl sm:text-2xl font-medium text-[#0A0F1E] line-clamp-1">
+                      {showcaseEvent.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-[#4A4A4A] line-clamp-1">
+                      {showcaseEvent.venue_name || showcaseEvent.city || 'Nigeria'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#4A4A4A]/80 font-medium">
+                      {dateLabel(showcaseEvent.start_time)}
+                    </p>
+
+                    {/* Perforation line */}
+                    <div className="relative my-4 flex items-center justify-between">
+                      <span className="absolute -left-6 size-4 rounded-r-full bg-[#0F1A2E]" />
+                      <div className="w-full border-b border-dashed border-[#0A0F1E]/25" />
+                      <span className="absolute -right-6 size-4 rounded-l-full bg-[#0F1A2E]" />
+                    </div>
+
+                    {/* Action & price */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleLike(e, showcaseEvent.id)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#0A0F1E] hover:text-red-600 transition"
+                      >
+                        <Heart
+                          className={`size-4 ${
+                            likedEvents[showcaseEvent.id]
+                              ? 'fill-red-500 text-red-500'
+                              : 'fill-[#0A0F1E]/20 text-[#0A0F1E]'
+                          }`}
+                        />
+                        <span>{likedEvents[showcaseEvent.id] ? 'Saved' : 'Save'}</span>
+                      </button>
+
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase font-bold text-[#4A4A4A] block leading-none">
+                          Admission
+                        </span>
+                        <span className="font-serif text-lg font-bold text-[#0A0F1E]">
+                          {priceLabel(showcasePrice)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Link
+                      to={`/events/${showcaseEvent.id}`}
+                      className="mt-4 block w-full rounded-xl bg-[#0A0F1E] py-2.5 text-center text-xs font-semibold text-[#F5E6C8] hover:bg-[#0A0F1E]/90 transition"
+                    >
+                      View Event & Tickets
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination dots */}
+              <div className="mt-8 flex items-center gap-2" aria-hidden="true">
+                <span className="size-2 rounded-full bg-[#F4E4BC]/30" />
+                <span className="h-2 w-5 rounded-full bg-[#F4E4BC]" />
+                <span className="size-2 rounded-full bg-[#F4E4BC]/30" />
+              </div>
+            </>
+          ) : (
+            /* ZERO FAKE PRODUCTS: Pure Platform Features & Creator Spotlight */
+            <div className="w-full max-w-5xl text-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(244,228,188,0.25)] bg-[rgba(244,228,188,0.08)] px-4 py-1.5 text-xs font-medium text-[#F5E6C8] mb-6">
+                <ShieldCheck className="size-4 text-[#D4B483]" />
+                <span>Next-Gen Event Infrastructure</span>
+              </div>
+
+              <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium text-white max-w-2xl mx-auto leading-tight">
+                Built for Seamless Events & Instant Ticketing
+              </h2>
+              <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-xl mx-auto">
+                Issue tamper-proof QR tickets, manage guest tiers, and receive ticket revenue directly to your Nigerian bank.
+              </p>
+
+              <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                {/* Feature 1 */}
+                <div className="rounded-2xl border border-[rgba(244,228,188,0.15)] bg-[#0A0F1E]/80 p-6 sm:p-7 shadow-xl hover:border-[rgba(244,228,188,0.3)] transition">
+                  <div className="grid size-12 place-items-center rounded-xl bg-[rgba(244,228,188,0.1)] border border-[rgba(244,228,188,0.2)] text-[#F5E6C8] mb-5">
+                    <QrCode className="size-6" />
+                  </div>
+                  <h3 className="font-serif text-xl font-medium text-white mb-2">Instant QR Gate Entry</h3>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    Attendees receive offline-ready QR codes. Staff scan tickets at the door in under a second with zero friction.
+                  </p>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-[#4A4A4A] block leading-none">
-                    Admission
-                  </span>
-                  <span className="font-serif text-lg font-bold text-[#0A0F1E]">
-                    {priceLabel(showcasePrice ?? 2500000)}
-                  </span>
+                {/* Feature 2 */}
+                <div className="rounded-2xl border border-[rgba(244,228,188,0.15)] bg-[#0A0F1E]/80 p-6 sm:p-7 shadow-xl hover:border-[rgba(244,228,188,0.3)] transition">
+                  <div className="grid size-12 place-items-center rounded-xl bg-[rgba(244,228,188,0.1)] border border-[rgba(244,228,188,0.2)] text-[#F5E6C8] mb-5">
+                    <Ticket className="size-6" />
+                  </div>
+                  <h3 className="font-serif text-xl font-medium text-white mb-2">Flexible Tier Management</h3>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    Create Early Bird, Regular, VIP, and Table packages with custom capacities, group perks, and custom pricing.
+                  </p>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="rounded-2xl border border-[rgba(244,228,188,0.15)] bg-[#0A0F1E]/80 p-6 sm:p-7 shadow-xl hover:border-[rgba(244,228,188,0.3)] transition">
+                  <div className="grid size-12 place-items-center rounded-xl bg-[rgba(244,228,188,0.1)] border border-[rgba(244,228,188,0.2)] text-[#F5E6C8] mb-5">
+                    <CheckCircle2 className="size-6" />
+                  </div>
+                  <h3 className="font-serif text-xl font-medium text-white mb-2">Automated Settlement</h3>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    Collect ticket payments securely via Paystack with instant receipt dispatch and real-time revenue tracking.
+                  </p>
                 </div>
               </div>
 
-              {/* Barcode graphic footer */}
-              <div className="mt-3 flex items-center justify-center gap-1 py-1 opacity-60">
-                <div className="flex gap-[2px] h-7 items-end">
-                  {[3, 5, 2, 4, 1, 6, 3, 2, 5, 4, 2, 6, 3, 4, 2, 5, 3].map((h, i) => (
-                    <span
-                      key={i}
-                      className="bg-[#0A0F1E]"
-                      style={{
-                        width: i % 3 === 0 ? '3px' : '1.5px',
-                        height: `${h * 4 + 4}px`,
-                      }}
-                    />
-                  ))}
-                </div>
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                <Link
+                  to={hostHref}
+                  className="rounded-full bg-[#F5E6C8] px-7 py-3 text-sm font-semibold text-[#0A0F1E] hover:bg-[#F4E4BC] shadow-[0_0_30px_rgba(244,228,188,0.2)] transition active:scale-95"
+                >
+                  Create Your First Event
+                </Link>
+                <Link
+                  to="/events"
+                  className="rounded-full border border-[rgba(244,228,188,0.4)] px-7 py-3 text-sm font-medium text-white hover:bg-white/5 transition"
+                >
+                  Browse Marketplace
+                </Link>
               </div>
             </div>
-          </div>
-
-          {/* Pagination dot indicators */}
-          <div className="mt-8 flex items-center gap-2" aria-hidden="true">
-            <span className="size-2 rounded-full bg-[#F4E4BC]/30" />
-            <span className="h-2 w-5 rounded-full bg-[#F4E4BC]" />
-            <span className="size-2 rounded-full bg-[#F4E4BC]/30" />
-          </div>
+          )}
         </div>
       </section>
 
@@ -708,12 +827,13 @@ export const EventLandingPage: React.FC = () => {
                             </p>
                           </div>
 
-                          {/* Bottom row: Star rating + count & Price */}
+                          {/* Bottom row: Location & Price */}
                           <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
-                            <span className="flex items-center gap-1 text-xs text-[#D4B483]">
-                              <Star className="size-3.5 fill-[#D4B483]" />
-                              <span className="font-medium text-white/90">4.9</span>
-                              <span className="text-slate-500 text-[10px]">(128)</span>
+                            <span className="flex items-center gap-1.5 text-xs text-[#D4B483]">
+                              <MapPin className="size-3.5 text-[#D4B483]" />
+                              <span className="font-medium text-slate-300 truncate max-w-[140px]">
+                                {event.city || event.venue_name || 'Nigeria'}
+                              </span>
                             </span>
                             <span className="font-serif text-sm font-medium text-[#F5E6C8]">
                               {priceLabel(price)}
