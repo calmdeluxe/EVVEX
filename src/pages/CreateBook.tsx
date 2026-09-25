@@ -213,6 +213,29 @@ export const CreateBook: React.FC = () => {
     }
   }, [id, contentType]);
 
+  useEffect(() => {
+    if (!isTicketMode || authLoading || (!profile?.id && !user?.id)) return;
+
+    const loadEventOptions = async () => {
+      const query = supabase
+        .from('events')
+        .select('id, title, created_by, status')
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false });
+      const { data, error } = isAdmin
+        ? await query
+        : await query.eq('created_by', profile?.id || user?.id);
+
+      if (error) {
+        setError(`Unable to load your events: ${error.message}`);
+        return;
+      }
+      setEventOptions(data || []);
+    };
+
+    loadEventOptions();
+  }, [isTicketMode, authLoading, isAdmin, profile?.id, user?.id]);
+
   // Continuously save state changes to sessionStorage
   useEffect(() => {
     if (title || content || (cards && cards.length > 0)) {
@@ -1279,7 +1302,7 @@ export const CreateBook: React.FC = () => {
       let profileId = userProfile?.id || user?.id;
 
       if (!profileId) {
-        throw new Error('You must be signed in to save a book.');
+        throw new Error('You must be signed in to save this content.');
       }
 
       let assignedUserId = profileId;
@@ -1287,6 +1310,101 @@ export const CreateBook: React.FC = () => {
         assignedUserId = selectedAuthorId;
       } else if (id && bookUserId) {
         assignedUserId = bookUserId;
+      }
+
+      if (isEventMode || isTicketMode) {
+        const parsedPrice = Number(price || 0);
+        const parsedCapacity = Number(capacity || 0);
+        const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `evex-${Date.now()}`;
+
+        if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+          throw new Error('Enter a valid ticket price.');
+        }
+        if (!Number.isInteger(parsedCapacity) || parsedCapacity <= 0) {
+          throw new Error('Capacity must be a positive whole number.');
+        }
+
+        if (isEventMode) {
+          if (!venueName.trim()) throw new Error('Venue name is required.');
+          if (!startTime) throw new Error('Event start time is required.');
+
+          const parsedStart = new Date(startTime);
+          const parsedEnd = endTime ? new Date(endTime) : null;
+          if (Number.isNaN(parsedStart.getTime())) throw new Error('Enter a valid event start time.');
+          if (parsedEnd && (Number.isNaN(parsedEnd.getTime()) || parsedEnd <= parsedStart)) {
+            throw new Error('Event end time must be after the start time.');
+          }
+
+          const eventData = {
+            title: title.trim(),
+            slug,
+            description: description.trim() || content.trim().slice(0, 200),
+            category: eventCategory,
+            cover_image: coverImage || null,
+            venue_name: venueName.trim(),
+            venue_address: venueAddress.trim() || null,
+            city: city.trim() || null,
+            state: state.trim() || null,
+            start_time: parsedStart.toISOString(),
+            end_time: parsedEnd ? parsedEnd.toISOString() : null,
+            capacity: parsedCapacity,
+            created_by: assignedUserId,
+            status: isPublishing ? (isAdmin ? 'published' : 'under_review') : 'draft',
+          };
+
+          const result = id
+            ? await supabase.from('events').update(eventData).eq('id', id).eq(isAdmin ? 'id' : 'created_by', isAdmin ? id : assignedUserId).select('id').single()
+            : await supabase.from('events').insert(eventData).select('id').single();
+          if (result.error) throw result.error;
+        } else {
+          if (!eventId) throw new Error('Select an existing event for this ticket tier.');
+          if (!['standard', 'vip', 'early_bird', 'patron'].includes(tierType)) {
+            throw new Error('Select a valid ticket tier type.');
+          }
+
+          const { data: event, error: eventError } = await supabase
+            .from('events')
+            .select('id, created_by, status')
+            .eq('id', eventId)
+            .maybeSingle();
+          if (eventError) throw eventError;
+          if (!event) throw new Error('The selected event does not exist.');
+          if (!isAdmin && event.created_by !== assignedUserId) {
+            throw new Error('You are not authorized to manage tickets for this event.');
+          }
+
+          const parsedSalesStart = salesStart ? new Date(salesStart) : null;
+          const parsedSalesEnd = salesEnd ? new Date(salesEnd) : null;
+          if (parsedSalesStart && Number.isNaN(parsedSalesStart.getTime())) throw new Error('Enter a valid ticket sales start time.');
+          if (parsedSalesEnd && (Number.isNaN(parsedSalesEnd.getTime()) || (parsedSalesStart && parsedSalesEnd <= parsedSalesStart))) {
+            throw new Error('Ticket sales end must be after the sales start.');
+          }
+
+          const tierData = {
+            event_id: eventId,
+            name: title.trim(),
+            tier_type: tierType,
+            price_kobo: Math.round(parsedPrice * 100),
+            currency: 'NGN',
+            capacity: parsedCapacity,
+            sold_count: 0,
+            is_patron_only: isPatronOnly,
+            sales_start: parsedSalesStart ? parsedSalesStart.toISOString() : null,
+            sales_end: parsedSalesEnd ? parsedSalesEnd.toISOString() : null,
+          };
+
+          const result = id
+            ? await supabase.from('event_ticket_tiers').update(tierData).eq('id', id).select('id').single()
+            : await supabase.from('event_ticket_tiers').insert(tierData).select('id').single();
+          if (result.error) throw result.error;
+        }
+
+        setPublished(isPublishing);
+        setMessage(isEventMode
+          ? (isPublishing ? (isAdmin ? 'Event published successfully.' : 'Event submitted for admin review.') : 'Event draft saved successfully.')
+          : (isPublishing ? 'Ticket tier published successfully.' : 'Ticket tier draft saved successfully.'));
+        setTimeout(() => navigate('/dashboard'), 2000);
+        return;
       }
 
       const { ok, problems, hasPdfPrice, hasCoverImage, hasContentType } = await verifyBooksSchema();
@@ -2701,6 +2819,84 @@ export const CreateBook: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-6">
+                {(isEventMode || isTicketMode) && (
+                  <Card className="border border-emerald-100 shadow-sm rounded-3xl bg-emerald-50/40">
+                    <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {isTicketMode ? (
+                        <>
+                          <div className="md:col-span-2 space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Event</Label>
+                            <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold">
+                              <option value="">Select an event</option>
+                              {eventOptions.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
+                            </select>
+                            {eventOptions.length === 0 && <p className="text-xs text-amber-700 font-semibold">Create an event first before adding a ticket tier.</p>}
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Tier type</Label>
+                            <select value={tierType} onChange={(e) => setTierType(e.target.value)} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold">
+                              <option value="standard">Regular</option>
+                              <option value="vip">VIP</option>
+                              <option value="early_bird">Early Bird</option>
+                              <option value="patron">Patron</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Capacity</Label>
+                            <Input type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Sales start</Label>
+                            <Input type="datetime-local" value={salesStart} onChange={(e) => setSalesStart(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Sales end</Label>
+                            <Input type="datetime-local" value={salesEnd} onChange={(e) => setSalesEnd(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <label className="md:col-span-2 flex items-center gap-3 text-sm font-bold text-slate-700">
+                            <input type="checkbox" checked={isPatronOnly} onChange={(e) => setIsPatronOnly(e.target.checked)} /> Patron-only tier
+                          </label>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Venue name</Label>
+                            <Input value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="Venue name" className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Venue address</Label>
+                            <Input value={venueAddress} onChange={(e) => setVenueAddress(e.target.value)} placeholder="Venue address" className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">City</Label>
+                            <Input value={city} onChange={(e) => setCity(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">State</Label>
+                            <Input value={state} onChange={(e) => setState(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Start time</Label>
+                            <Input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">End time</Label>
+                            <Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Capacity</Label>
+                            <Input type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest">Category</Label>
+                            <Input value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} className="h-12 rounded-xl bg-white" />
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {cards.map((card, idx) => (
                   <Card key={idx} className="border border-slate-200/80 shadow-md rounded-3xl overflow-hidden group hover:shadow-xl transition-all bg-white">
                     {/* Top Toolbar for Card Ordering & Insertion */}
