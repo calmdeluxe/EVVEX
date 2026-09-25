@@ -73,6 +73,10 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
 import { SupportPage } from './pages/SupportPage';
 import { DownloadAppPage } from './pages/DownloadAppPage';
+import { EventMarketplace } from './pages/EventMarketplace';
+import { EventManager } from './pages/EventManager';
+import { MyTickets } from './pages/MyTickets';
+import { EventCheckIn } from './pages/EventCheckIn';
 import { TriviaBanner } from './components/TriviaBanner';
 import { PaystackSetup } from './components/PaystackSetup';
 import { Button } from '@/components/ui/button';
@@ -265,6 +269,8 @@ const AppContent = () => {
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/bookshelf" element={<Bookshelf />} />
+            <Route path="/events" element={<EventMarketplace />} />
+            <Route path="/events/:id" element={<EventMarketplace />} />
           <Route path="/ebooks" element={<BrowseBooks />} />
           <Route path="/blog" element={<BrowseBlogs />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
@@ -299,6 +305,9 @@ const AppContent = () => {
           <Route path="/upgrade/premium" element={<PrivateRoute><PremiumUpgrade /></PrivateRoute>} />
           <Route path="/apply/author" element={<PrivateRoute><AuthorApplication /></PrivateRoute>} />
           <Route path="/payment" element={<PrivateRoute><PublicPurchase /></PrivateRoute>} />
+            <Route path="/my-tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
+            <Route path="/manage-events" element={<MPRRoute><EventManager /></MPRRoute>} />
+            <Route path="/check-in/:eventId" element={<PrivateRoute><EventCheckIn /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/dashboard/:tab" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/create-book" element={<CreatorRoute><CreateBook /></CreatorRoute>} />

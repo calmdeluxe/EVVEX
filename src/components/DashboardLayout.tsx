@@ -186,9 +186,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
   const menuItems: { icon: any; label: string; path: string; hidden?: boolean; color?: string; action?: () => void }[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Ticket, label: 'Tickets & Purchases', path: '/bookshelf' },
+    { icon: Ticket, label: 'Browse EVEX Events', path: '/events' },
+    { icon: Ticket, label: 'My EVEX Tickets', path: '/my-tickets' },
     { icon: ShieldCheck, label: 'ADMIN CENTER', path: '/admin', hidden: !isAdmin && accountTier !== 'admin', color: "text-red-700 font-black animate-pulse bg-red-50" },
     { icon: Heart, label: 'Confessions Studio', path: '/admin/confessions', hidden: !isAdmin && accountTier !== 'admin', color: "text-pink-600" },
     { icon: Users, label: '★ MPR Partner Center', path: '/mpr', hidden: !isMpr, color: "text-purple-700 dark:text-purple-400 font-black bg-purple-50 dark:bg-purple-950/30" },
+    { icon: Ticket, label: 'Event Operations', path: '/manage-events', hidden: !isMpr && !isAdmin, color: "text-emerald-700 font-bold" },
     
     // Event & Ticket Creation (ADMIN & MPR ONLY — Strictly forbidden for Vendors)
     { icon: Ticket, label: '+ Create Event & Ticket', path: '/create-book?type=event', hidden: !isAdmin && !isMpr, color: "text-amber-500 font-bold" },
