@@ -1,6 +1,6 @@
-// LEGACY: CalmReader file, not part of EVEX product.
+// Shared creation shell for legacy content and EVEX event/ticket modes.
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -79,14 +79,18 @@ export const AVAILABLE_FONTS = [
 export const CreateBook: React.FC = () => {
   const { user, profile, isAdmin, isMpr, isVendor, canCreateEvents, canCreateProducts, accountTier, loading: authLoading, refreshProfile, getOrCreateProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: pathId } = useParams<{ id?: string }>();
   const [searchParams] = useSearchParams();
   const id = pathId || searchParams.get('id');
   const [typeState, setTypeState] = useState<string | null>(null);
   
   // Default type: Vendors default to 'product', Admin/MPR default to 'event'
-  const requestedType = typeState || searchParams.get('type');
+  const routeType = location.pathname === '/create-ticket' ? 'ticket' : location.pathname === '/create-event' ? 'event' : null;
+  const requestedType = typeState || searchParams.get('type') || routeType;
   const contentType = requestedType || (isVendor && !isAdmin && !isMpr ? 'product' : 'event');
+  const isEventMode = contentType === 'event';
+  const isTicketMode = contentType === 'ticket';
 
   const [activeStep, setActiveStep] = useState<'content' | 'cards' | 'publish'>('content');
   const [title, setTitle] = useState('');
@@ -110,6 +114,20 @@ export const CreateBook: React.FC = () => {
   const [pdfName, setPdfName] = useState('');
   const [videoUploading, setVideoUploading] = useState(false);
   const [tags, setTags] = useState('');
+  const [eventId, setEventId] = useState('');
+  const [eventOptions, setEventOptions] = useState<any[]>([]);
+  const [venueName, setVenueName] = useState('');
+  const [venueAddress, setVenueAddress] = useState('');
+  const [city, setCity] = useState('Lagos');
+  const [state, setState] = useState('Lagos State');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [eventCategory, setEventCategory] = useState('other');
+  const [capacity, setCapacity] = useState('100');
+  const [tierType, setTierType] = useState('standard');
+  const [isPatronOnly, setIsPatronOnly] = useState(false);
+  const [salesStart, setSalesStart] = useState('');
+  const [salesEnd, setSalesEnd] = useState('');
 
   // Edit vs Review mode separation
   const initialMode = searchParams.get('mode') === 'review' || searchParams.get('step') === 'publish' || searchParams.get('step') === 'review' ? 'review' : 'edit';
