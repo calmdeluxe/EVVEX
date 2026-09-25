@@ -83,6 +83,15 @@ export const EventMarketplace: React.FC = () => {
       setError('Attendee name, email, and phone are required.');
       return;
     }
+    const amountKobo = Number(tier.price_kobo || 0);
+    if (!Number.isSafeInteger(amountKobo) || amountKobo <= 0) {
+      setError('Free-ticket claiming is not enabled in this payment flow yet.');
+      return;
+    }
+    if (Number(tier.sold_count || 0) >= Number(tier.capacity || 0)) {
+      setError('This ticket tier is sold out.');
+      return;
+    }
 
     const ticketNumber = `EVX-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     setError('');
@@ -90,7 +99,7 @@ export const EventMarketplace: React.FC = () => {
     const handler = window.PaystackPop.setup({
       key: paystackKey,
       email: attendee.email.trim(),
-      amount: Number(tier.price_kobo || 0),
+      amount: amountKobo,
       currency: 'NGN',
       ref: ticketNumber,
       metadata: {
