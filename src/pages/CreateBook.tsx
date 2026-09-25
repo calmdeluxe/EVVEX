@@ -77,7 +77,7 @@ export const AVAILABLE_FONTS = [
 ];
 
 export const CreateBook: React.FC = () => {
-  const { user, profile, isAdmin, isMpr, isVendor, canCreateEvents, canCreateProducts, accountTier, loading: authLoading, refreshProfile, getOrCreateProfile } = useAuth();
+  const { user, profile, isAdmin, isMpr, isVendor, canCreateEvents, canCreateTickets, canCreateProducts, accountTier, loading: authLoading, refreshProfile, getOrCreateProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { id: pathId } = useParams<{ id?: string }>();
@@ -88,7 +88,7 @@ export const CreateBook: React.FC = () => {
   // Default type: Vendors default to 'product', Admin/MPR default to 'event'
   const routeType = location.pathname === '/create-ticket' ? 'ticket' : location.pathname === '/create-event' ? 'event' : null;
   const requestedType = typeState || searchParams.get('type') || routeType;
-  const contentType = requestedType || (isVendor && !isAdmin && !isMpr ? 'product' : 'event');
+  const contentType = requestedType || (pathId ? 'ebook' : (isVendor && !isAdmin && !isMpr ? 'product' : 'event'));
   const isEventMode = contentType === 'event';
   const isTicketMode = contentType === 'ticket';
 
@@ -661,6 +661,59 @@ export const CreateBook: React.FC = () => {
   useEffect(() => {
     if (id) {
       const fetchBook = async () => {
+        const explicitType = searchParams.get('type');
+        const formatDateTimeLocal = (value?: string | null) => value ? new Date(value).toISOString().slice(0, 16) : '';
+
+        if (explicitType === 'event') {
+          const { data, error } = await supabase.from('events').select('*').eq('id', id).maybeSingle();
+          if (error) {
+            setError(`Unable to load event: ${error.message}`);
+            return;
+          }
+          if (!data) {
+            setError('Event not found or unavailable.');
+            return;
+          }
+          setTitle(data.title || '');
+          setDescription(data.description || '');
+          setCoverImage(data.cover_image || '');
+          setVenueName(data.venue_name || '');
+          setVenueAddress(data.venue_address || '');
+          setCity(data.city || '');
+          setState(data.state || '');
+          setStartTime(formatDateTimeLocal(data.start_time));
+          setEndTime(formatDateTimeLocal(data.end_time));
+          setCapacity(String(data.capacity || 100));
+          setEventCategory(data.category || 'other');
+          setBookStatus(data.status);
+          setBookUserId(data.created_by || null);
+          setActiveStep('cards');
+          return;
+        }
+
+        if (explicitType === 'ticket') {
+          const { data, error } = await supabase.from('event_ticket_tiers').select('*').eq('id', id).maybeSingle();
+          if (error) {
+            setError(`Unable to load ticket tier: ${error.message}`);
+            return;
+          }
+          if (!data) {
+            setError('Ticket tier not found or unavailable.');
+            return;
+          }
+          setTitle(data.name || '');
+          setEventId(data.event_id || '');
+          setTierType(data.tier_type || 'standard');
+          setPrice(String((Number(data.price_kobo) || 0) / 100));
+          setCapacity(String(data.capacity || 100));
+          setIsPatronOnly(!!data.is_patron_only);
+          setSalesStart(formatDateTimeLocal(data.sales_start));
+          setSalesEnd(formatDateTimeLocal(data.sales_end));
+          setBookStatus(data.status);
+          setActiveStep('cards');
+          return;
+        }
+
         let data: any = null;
         try {
           const { data: sbData, error: sbError } = await supabase.from('books').select('*').eq('id', id).single();
@@ -763,7 +816,7 @@ export const CreateBook: React.FC = () => {
       };
       fetchBook();
     }
-  }, [id]);
+  }, [id, searchParams]);
 
   // Detects chapter-like headers
   function isChapterHeader(line: string): { isHeader: boolean; title: string } {
@@ -1245,6 +1298,15 @@ export const CreateBook: React.FC = () => {
   };
 
   const handleSave = async (isPublishing = false) => {
+    if (isEventMode && !canCreateEvents) {
+      setError('Only Admin and MPR accounts can create or manage events.');
+      return;
+    }
+    if (isTicketMode && !canCreateTickets) {
+      setError('Only Admin and MPR accounts can create or manage ticket tiers.');
+      return;
+    }
+
     if (!title.trim()) {
       setError('Title is required.');
       return;
@@ -1387,15 +1449,28 @@ export const CreateBook: React.FC = () => {
             price_kobo: Math.round(parsedPrice * 100),
             currency: 'NGN',
             capacity: parsedCapacity,
-            sold_count: 0,
             is_patron_only: isPatronOnly,
             sales_start: parsedSalesStart ? parsedSalesStart.toISOString() : null,
             sales_end: parsedSalesEnd ? parsedSalesEnd.toISOString() : null,
           };
 
-          const result = id
-            ? await supabase.from('event_ticket_tiers').update(tierData).eq('id', id).select('id').single()
-            : await supabase.from('event_ticket_tiers').insert(tierData).select('id').single();
+          let result;
+          if (id) {
+            const { data: existingTier, error: existingTierError } = await supabase
+              .from('event_ticket_tiers')
+              .select('id, event_id, sold_count')
+              .eq('id', id)
+              .maybeSingle();
+            if (existingTierError) throw existingTierError;
+            if (!existingTier) throw new Error('Ticket tier not found.');
+            if (existingTier.event_id !== eventId) throw new Error('Ticket tier does not belong to the selected event.');
+            if (parsedCapacity < (existingTier.sold_count || 0)) {
+              throw new Error(`Capacity cannot be lower than tickets already sold (${existingTier.sold_count}).`);
+            }
+            result = await supabase.from('event_ticket_tiers').update(tierData).eq('id', id).eq('event_id', eventId).select('id').single();
+          } else {
+            result = await supabase.from('event_ticket_tiers').insert({ ...tierData, sold_count: 0 }).select('id').single();
+          }
           if (result.error) throw result.error;
         }
 
