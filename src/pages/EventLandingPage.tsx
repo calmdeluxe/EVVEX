@@ -4,10 +4,12 @@ import {
   ArrowRight,
   CalendarDays,
   Clock3,
+  Download,
   Heart,
   MapPin,
   Menu,
   Search,
+  Smartphone,
   Star,
   Ticket,
   X,
@@ -188,8 +190,17 @@ export const EventLandingPage: React.FC = () => {
             </a>
           </div>
 
-          {/* Right: Search icon + Sign In pill */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* Right: Download App + Search icon + Sign In pill */}
+          <div className="hidden md:flex items-center gap-3.5">
+            <Link
+              to="/download"
+              className="inline-flex items-center gap-2 rounded-full border border-[#F4E4BC]/40 bg-[rgba(244,228,188,0.08)] px-4 py-2 text-xs sm:text-sm font-medium text-[#F5E6C8] hover:bg-[rgba(244,228,188,0.18)] hover:border-[#F4E4BC] transition shadow-[0_0_20px_rgba(244,228,188,0.1)] active:scale-95"
+              title="Download EVVEX for Android"
+            >
+              <Download className="size-3.5 text-[#D4B483]" />
+              <span>Download App</span>
+            </Link>
+
             <Link
               to="/events"
               className="grid size-10 place-items-center rounded-full text-slate-300 hover:text-white hover:bg-white/5 transition"
@@ -214,8 +225,17 @@ export const EventLandingPage: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile hamburger button */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile actions: Download + Hamburger */}
+          <div className="flex md:hidden items-center gap-2.5">
+            <Link
+              to="/download"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#F4E4BC]/35 bg-[rgba(244,228,188,0.08)] px-3 py-1.5 text-xs font-medium text-[#F5E6C8] hover:bg-white/5 transition"
+              aria-label="Download App"
+            >
+              <Download className="size-3.5 text-[#D4B483]" />
+              <span>App</span>
+            </Link>
+
             <button
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
@@ -231,6 +251,15 @@ export const EventLandingPage: React.FC = () => {
         {mobileMenuOpen && (
           <div className="md:hidden border-b border-[rgba(244,228,188,0.15)] bg-[#0A0F1E] px-6 py-5 shadow-2xl">
             <div className="flex flex-col gap-3 text-sm font-medium">
+              <Link
+                onClick={() => setMobileMenuOpen(false)}
+                to="/download"
+                className="flex items-center gap-2.5 rounded-xl border border-[rgba(244,228,188,0.25)] bg-[rgba(244,228,188,0.08)] px-3.5 py-2.5 text-sm font-semibold text-[#F5E6C8] hover:bg-[rgba(244,228,188,0.15)] transition"
+              >
+                <Smartphone className="size-4 text-[#D4B483]" />
+                <span>Download Mobile App (Android APK)</span>
+              </Link>
+
               <Link
                 onClick={() => setMobileMenuOpen(false)}
                 to="/events"
