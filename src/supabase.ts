@@ -352,10 +352,10 @@ export const supabase: SupabaseClient = new Proxy({} as any, {
     if (prop === '__isDummy') {
       return !!activeClient.__isDummy;
     }
-    // Compatibility Layer: safely route any legacy or mismatched 'profiles' requests to the active 'users' table
+    // Compatibility Layer: safely route any legacy or mismatched 'users' requests to the active 'profiles' table
     if (prop === 'from') {
       return function(relation: string, ...args: any[]) {
-        const targetRel = relation === 'profiles' ? 'users' : relation;
+        const targetRel = relation === 'users' ? 'profiles' : relation;
         return activeClient.from(targetRel, ...args);
       };
     }

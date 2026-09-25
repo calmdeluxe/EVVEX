@@ -143,8 +143,8 @@ function adaptSupabaseClient(client: any) {
   if (!client || (client as any).__isAdapted) return client;
   const originalFrom = client.from.bind(client);
   client.from = function (relation: string) {
-    if (relation === "profiles") {
-      return originalFrom("users");
+    if (relation === "users") {
+      return originalFrom("profiles");
     }
     return originalFrom(relation);
   };
@@ -3017,50 +3017,67 @@ export async function startServer() {
           "samuelchukwuemeke05@gmail.com",
         ].includes(req.user?.email?.toLowerCase());
 
-      // Fetch calculated earnings from transactions
-      const { data: earnings, error: eError } = await supabase
-        .from("transactions")
-        .select("amount")
-        .eq("user_id", userId)
-        .in("type", [
-          "author_earning",
-          "affiliate_commission",
-          "referral_bonus",
-          "trivia_win",
-        ]);
+      let totalEarnedCalculated = 0;
+      let totalWithdrawnCalculated = 0;
 
-      if (eError) throw eError;
+      try {
+        // Fetch calculated earnings from transactions
+        const { data: earnings, error: eError } = await supabase
+          .from("transactions")
+          .select("amount")
+          .eq("user_id", userId)
+          .in("type", [
+            "author_earning",
+            "affiliate_commission",
+            "referral_bonus",
+            "trivia_win",
+          ]);
 
-      const totalEarnedCalculated =
-        earnings?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
+        if (!eError && earnings) {
+          totalEarnedCalculated = earnings.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+        }
+      } catch (e) {
+        // Transactions table does not exist, proceed safely
+      }
 
-      // Withdrawals
-      const { data: rawWithdrawals, error: wError } = await supabase
-        .from("withdrawals")
-        .select("amount, status")
-        .eq("user_id", userId);
+      try {
+        // Withdrawals
+        const { data: rawWithdrawals, error: wError } = await supabase
+          .from("withdrawals")
+          .select("amount, status")
+          .eq("user_id", userId);
 
-      if (wError) throw wError;
+        if (!wError && rawWithdrawals) {
+          const withdrawals = rawWithdrawals.filter((w: any) =>
+            w.status === "approved" || w.status === "paid" || w.status === "pending" || w.status === 1 || w.status === "1" || w.status === 0 || w.status === "0" || w.status === 3 || w.status === "3"
+          );
+          totalWithdrawnCalculated = withdrawals.reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+        }
+      } catch (e) {
+        // Withdrawals table does not exist, proceed safely
+      }
 
-      const withdrawals = rawWithdrawals?.filter((w: any) =>
-        w.status === "approved" || w.status === "paid" || w.status === "pending" || w.status === 1 || w.status === "1" || w.status === 0 || w.status === "0" || w.status === 3 || w.status === "3"
-      ) || [];
-
-      const totalWithdrawnCalculated =
-        withdrawals?.reduce((sum: number, w: any) => sum + w.amount, 0) || 0;
+      const walletBalance =
+        (req.profile?.wallet_balance_kobo ? req.profile.wallet_balance_kobo / 100 : req.profile?.wallet_balance) ||
+        (totalEarnedCalculated - totalWithdrawnCalculated) ||
+        0;
 
       res.json({
-        balance:
-          req.profile?.wallet_balance ||
-          totalEarnedCalculated - totalWithdrawnCalculated,
+        balance: walletBalance,
         t_points: req.profile?.t_points || 0,
         totalEarned: req.profile?.total_earned || totalEarnedCalculated,
-        totalWithdrawn:
-          req.profile?.total_withdrawn || totalWithdrawnCalculated,
+        totalWithdrawn: req.profile?.total_withdrawn || totalWithdrawnCalculated,
       });
     } catch (err: any) {
-      console.error("Fetch balance error:", err);
-      res.status(500).json({ error: maskError(err, req.profile?.is_admin) });
+      if (err.code !== "PGRST205" && !err.message?.includes("schema cache")) {
+        console.error("Fetch balance error:", err);
+      }
+      res.json({
+        balance: (req.profile?.wallet_balance_kobo ? req.profile.wallet_balance_kobo / 100 : req.profile?.wallet_balance) || 0,
+        t_points: req.profile?.t_points || 0,
+        totalEarned: req.profile?.total_earned || 0,
+        totalWithdrawn: req.profile?.total_withdrawn || 0,
+      });
     }
   });
 
@@ -6925,7 +6942,9 @@ export async function startServer() {
       if (error) throw error;
       res.json({ genres: data || [] });
     } catch (err: any) {
-      console.warn("[Genres] DB Fetch failed, returning high-fidelity inline fallbacks:", err.message);
+      if (err.code !== "PGRST205" && !err.message?.includes("schema cache")) {
+        console.warn("[Genres] DB Fetch failed, returning high-fidelity inline fallbacks:", err.message);
+      }
       const fallbackGenres = [
         { id: "comic-id-placeholder", name: "Comic", slug: "comic" },
         { id: "horror-id-placeholder", name: "Horror", slug: "horror" },
@@ -8254,16 +8273,16 @@ export async function startServer() {
           .order("created_at", { ascending: false });
 
         if (error) {
-          console.error(
-            "Fetch payment verifications error details:",
-            JSON.stringify(error, null, 2),
-          );
-          if (error.code === "42P01") {
+          if (error.code === "42P01" || error.code === "PGRST205" || error.message?.includes("schema cache")) {
             return res.json({
               verifications: [],
               warning: "Table payment_verifications is missing.",
             });
           }
+          console.error(
+            "Fetch payment verifications error details:",
+            JSON.stringify(error, null, 2),
+          );
           return res.status(500).json({ error: error.message });
         }
 
@@ -8751,15 +8770,28 @@ export async function startServer() {
     try {
       const supabase = getSupabaseAdmin();
       const { data: authors, error } = await supabase
-        .from("users")
-        .select("id, email, full_name, username, account_tier, is_approved_author, is_author")
+        .from("profiles")
+        .select("id, email, full_name, username, app_role")
         .order("full_name", { ascending: true });
 
-      if (error) throw error;
-      res.json({ authors: authors || [] });
+      if (error) {
+        if (error.code === "PGRST205" || error.code === "42P01" || error.message?.includes("schema cache")) {
+          return res.json({ authors: [] });
+        }
+        throw error;
+      }
+      const mapped = (authors || []).map((a: any) => ({
+        ...a,
+        account_tier: a.app_role || 'free',
+        is_approved_author: a.app_role === 'event_host' || a.app_role === 'author' || a.app_role === 'admin',
+        is_author: a.app_role === 'event_host' || a.app_role === 'author'
+      }));
+      res.json({ authors: mapped });
     } catch (err: any) {
-      console.error("[AdminAuthors] Error:", err);
-      res.status(500).json({ error: err.message || "Failed to fetch authors list" });
+      if (err.code !== "PGRST205" && !err.message?.includes("schema cache")) {
+        console.error("[AdminAuthors] Error:", err);
+      }
+      res.json({ authors: [] });
     }
   });
 
@@ -9015,13 +9047,13 @@ export async function startServer() {
           .select("*");
 
         if (sError) {
-          console.error(
-            "[Trivias] Hub sessions fetch error:",
-            JSON.stringify(sError, null, 2),
-          );
-          if (sError.code === "42P01") {
+          if (sError.code === "42P01" || sError.code === "PGRST205" || sError.message?.includes("schema cache")) {
             tableExists = false;
           } else {
+            console.error(
+              "[Trivias] Hub sessions fetch error:",
+              JSON.stringify(sError, null, 2),
+            );
             throw sError;
           }
         } else {
@@ -9032,7 +9064,9 @@ export async function startServer() {
           });
         }
       } catch (err: any) {
-        console.warn("[Trivias API] Error querying 'trivias' table, falling back:", err.message || err);
+        if (err.code !== "PGRST205" && !err.message?.includes("schema cache")) {
+          console.warn("[Trivias API] Error querying 'trivias' table, falling back:", err.message || err);
+        }
         tableExists = false;
       }
 
@@ -9044,12 +9078,16 @@ export async function startServer() {
           .select("ebook_id")
           .eq("is_active", true);
         if (qError) {
-          console.warn("[Trivias API] Failed to fetch active questions:", qError.message);
+          if (qError.code !== "PGRST205" && qError.code !== "42P01" && !qError.message?.includes("schema cache")) {
+            console.warn("[Trivias API] Failed to fetch active questions:", qError.message);
+          }
         } else {
           questions = data || [];
         }
       } catch (err: any) {
-        console.warn("[Trivias API] Error querying 'trivia_questions' table safely:", err.message || err);
+        if (err.code !== "PGRST205" && !err.message?.includes("schema cache")) {
+          console.warn("[Trivias API] Error querying 'trivia_questions' table safely:", err.message || err);
+        }
       }
 
       const questionCounts: { [key: string]: number } = {};
@@ -9073,12 +9111,16 @@ export async function startServer() {
           .from("books")
           .select("id, title, cover_image, status, price, cards_json, genre_id, admin_note");
         if (bError) {
-          console.warn("[Trivias API] Failed to fetch books details:", bError.message);
+          if (bError.code !== "PGRST205" && bError.code !== "42P01" && !bError.message?.includes("schema cache")) {
+            console.warn("[Trivias API] Failed to fetch books details:", bError.message);
+          }
         } else {
           books = bookData || [];
         }
       } catch (err: any) {
-        console.warn("[Trivias API] Error querying 'books' table safely:", err.message || err);
+        if (err.code !== "PGRST205" && !err.message?.includes("schema cache")) {
+          console.warn("[Trivias API] Error querying 'books' table safely:", err.message || err);
+        }
       }
 
       // Fetch all genres to resolve category names
