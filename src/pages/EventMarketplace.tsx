@@ -92,6 +92,22 @@ export const EventMarketplace: React.FC = () => {
       setError('This ticket tier is sold out.');
       return;
     }
+    // Validate sales window
+    const now = new Date();
+    if (tier.sales_start && new Date(tier.sales_start) > now) {
+      setError('Ticket sales have not started yet.');
+      return;
+    }
+    if (tier.sales_end && new Date(tier.sales_end) < now) {
+      setError('Ticket sales have ended.');
+      return;
+    }
+    // Validate patron-only tier
+    if (tier.is_patron_only) {
+      // The user's patron status is checked via the auth context
+      // For now we allow the attempt; the webhook will validate
+      console.warn('Patron-only tier purchase attempted - webhook will validate entitlement');
+    }
 
     const ticketNumber = `EVX-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     setError('');
