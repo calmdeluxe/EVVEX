@@ -33,7 +33,8 @@ import {
   User,
   Ticket,
   Store,
-  ShoppingBag
+  ShoppingBag,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
@@ -216,6 +217,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
     { icon: Wand2, label: 'Promo Image Studio', path: '/promo-studio', color: "text-amber-500 font-bold" },
     { icon: Smartphone, label: '📱 Download Android APK', path: '/download', color: "text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-950/20" },
     { icon: Store, label: 'Vendor Marketplace', path: '/dashboard/discovery' },
+    { icon: FileText, label: 'My Applications', path: '/my-applications', color: "text-indigo-600 font-bold" },
     { icon: Wallet, label: 'Earnings', path: '/earnings' },
     { icon: ArrowUpRight, label: 'Withdrawal', path: '/earnings#withdraw' },
     { icon: Users, label: 'Referral', path: '/dashboard#referrals' },
@@ -524,7 +526,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
           </div>
         </header>
 
-        <main className={cn("flex-1 w-full max-w-full overflow-x-hidden pb-20 md:pb-24", hideMobileHeader ? "p-0 md:p-8" : "p-2 sm:p-4 md:p-8")}>
+        <main className={cn("flex-1 w-full max-w-full overflow-x-hidden pb-32 md:pb-24 pt-16 md:pt-0", hideMobileHeader ? "p-0 md:p-8" : "p-2 sm:p-4 md:p-8")}>
           {children}
         </main>
       </div>
@@ -660,6 +662,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
           >
             <User className="w-5 h-5" />
             <span className="text-[11px] tracking-tight">Profile</span>
+          </Link>
+
+          <Link
+            to="/my-applications"
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
+              location.pathname === '/my-applications'
+                ? "text-green-700 dark:text-[#EAB308] font-bold"
+                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
+            )}
+          >
+            <FileText className="w-5 h-5" />
+            <span className="text-[11px] tracking-tight">Applications</span>
           </Link>
         </div>
       </footer>

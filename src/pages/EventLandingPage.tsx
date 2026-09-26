@@ -13,7 +13,8 @@ import {
   Share2,
   Download,
   CalendarDays,
-  Plus
+  Plus,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
@@ -579,6 +580,49 @@ export const EventLandingPage: React.FC = () => {
 
                           <div className="w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center group-hover:bg-white group-hover:text-[#933D1E] transition-all">
                             <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+
+                          {/* Category badge */}
+                          <span className="absolute bottom-3 left-3 rounded-full bg-[#0A0F1E]/80 backdrop-blur px-2.5 py-0.5 text-[9px] font-bold text-[#F5E6C8] uppercase tracking-wider">
+                            {ev.category || 'Live Event'}
+                          </span>
+                        </div>
+
+                        {/* Card body */}
+                        <div className="flex flex-1 flex-col justify-between p-4">
+                          <div>
+                            <h4 className="font-semibold text-white group-hover:text-[#F5E6C8] transition line-clamp-1 text-base">
+                              {ev.title}
+                            </h4>
+                            <p className="mt-1 text-xs text-slate-400 line-clamp-1">
+                              {dateLabel(ev.startTimeRaw)} · {ev.venue || ev.city || 'Nigeria'}
+                            </p>
+                          </div>
+
+                          {/* Bottom row: Location, Price & Apply */}
+                          <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                            <span className="flex items-center gap-1.5 text-xs text-[#D4B483]">
+                              <MapPin className="size-3.5 text-[#D4B483]" />
+                              <span className="font-medium text-slate-300 truncate max-w-[140px]">
+                                {ev.city || ev.venue || 'Nigeria'}
+                              </span>
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-serif text-sm font-medium text-[#F5E6C8]">
+                                {priceLabel(ev.priceKobo)}
+                              </span>
+                              <Link
+                                to={`/events/${ev.id}/apply`}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600/90 hover:bg-amber-600 text-white text-xs font-bold transition-all"
+                              >
+                                <UserPlus className="size-3.5" />
+                                <span className="hidden sm:inline">Apply</span>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
                           </div>
                         </div>
                       </div>

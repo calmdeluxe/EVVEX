@@ -74,6 +74,8 @@ import { TermsPage } from './pages/TermsPage';
 import { SupportPage } from './pages/SupportPage';
 import { DownloadAppPage } from './pages/DownloadAppPage';
 import { EventMarketplace } from './pages/EventMarketplace';
+import { EventApplication } from './pages/EventApplication';
+import { MyApplications } from './pages/MyApplications';
 import { EventManager } from './pages/EventManager';
 import { MyTickets } from './pages/MyTickets';
 import { EventCheckIn } from './pages/EventCheckIn';
@@ -246,6 +248,7 @@ const AppContent = () => {
           <Route path="/bookshelf" element={<Bookshelf />} />
             <Route path="/events" element={<EventMarketplace />} />
             <Route path="/events/:id" element={<EventMarketplace />} />
+            <Route path="/events/:id/apply" element={<PrivateRoute><EventApplication /></PrivateRoute>} />
           <Route path="/ebooks" element={<BrowseBooks />} />
           <Route path="/blog" element={<BrowseBlogs />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
@@ -281,6 +284,7 @@ const AppContent = () => {
           <Route path="/apply/author" element={<PrivateRoute><AuthorApplication /></PrivateRoute>} />
           <Route path="/payment" element={<PrivateRoute><PublicPurchase /></PrivateRoute>} />
             <Route path="/my-tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
+            <Route path="/my-applications" element={<PrivateRoute><MyApplications /></PrivateRoute>} />
             <Route path="/manage-events" element={<MPRRoute><EventManager /></MPRRoute>} />
             <Route path="/check-in/:eventId" element={<PrivateRoute><EventCheckIn /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

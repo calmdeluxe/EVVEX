@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowRight, CalendarDays, MapPin, Ticket, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, MapPin, Ticket, Users, UserPlus } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { FrameworkBackground } from '../components/FrameworkBackground';
@@ -310,10 +310,19 @@ export const EventMarketplace: React.FC = () => {
               ))}
             </div>
           </section>
+
+          {/* Apply to Participate Section */}
+          <section className="rounded-3xl bg-[#FAF7F2] text-[#2C2216] p-6 shadow-xl border border-[#DEB887]/60 md:p-8">
+            <h2 className="mb-5 text-2xl font-serif font-black flex items-center gap-2">
+              <UserPlus className="h-6 w-6 text-[#B15332]" /> Apply to Participate
+            </h2>
+            <p className="text-stone-600 mb-4">Want to perform, speak, vend, volunteer, or help run this event? Submit an application to the organizer.</p>
+            <Link to={`/events/${event?.id}/apply`} className="inline-flex items-center gap-2 rounded-xl bg-[#B15332] hover:bg-[#8F3B1D] px-6 py-3 text-sm font-black text-white">
+              <UserPlus className="h-4 w-4" /> Apply to Participate
+            </Link>
+          </section>
         </div>
       </main>
     </FrameworkBackground>
-  );
-};
 
 export default EventMarketplace;
