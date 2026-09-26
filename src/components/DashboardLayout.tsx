@@ -42,6 +42,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '../lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { UserFeedbackModal } from './UserFeedbackModal';
+import { FrameworkBackground } from './FrameworkBackground';
+import { EvvexLogo } from './EvvexLogo';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -223,15 +225,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#030308] text-gray-900 dark:text-gray-100 transition-colors duration-200 flex">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0d0d15] border-r border-gray-200 dark:border-white/5 fixed h-full z-40">
-        <div className="p-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <BookOpen className="w-8 h-8 text-green-700 dark:text-[#EAB308]" />
-            <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">EVVEX</span>
-          </Link>
-        </div>
+    <FrameworkBackground overlayOpacity="from-[#A84C27]/20 via-[#1C160C]/35 to-[#2A382A]/50">
+      <div className="min-h-screen text-gray-900 dark:text-gray-100 flex">
+        {/* Sidebar - Desktop */}
+        <aside className="hidden md:flex flex-col w-64 bg-[#FAF7F2]/95 dark:bg-[#15100D]/95 backdrop-blur-xl border-r border-[#DEB887]/40 dark:border-white/10 fixed h-full z-40 shadow-sm">
+          <div className="p-6 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+              <EvvexLogo size="sm" variant="terracotta" />
+            </Link>
+          </div>
 
         <div className="px-6 mb-6">
           {accountTier === 'admin' || isAdmin ? (
@@ -293,11 +295,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
         {!hideMobileHeader && (
           <header 
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-            className="md:hidden bg-white dark:bg-[#0d0d15] border-b border-gray-200 dark:border-white/5 px-3 sm:px-4 min-h-16 flex items-center justify-between sticky top-0 z-40 w-full"
+            className="md:hidden bg-[#FAF7F2]/95 dark:bg-[#15100D]/95 backdrop-blur-xl border-b border-[#DEB887]/40 dark:border-white/10 px-3 sm:px-4 min-h-16 flex items-center justify-between sticky top-0 z-40 w-full shadow-xs"
           >
           <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <BookOpen className="w-6 h-6 text-green-700 dark:text-[#EAB308]" />
-            <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-white">EVVEX</span>
+            <EvvexLogo size="xs" variant="terracotta" />
           </Link>
           <div className="flex items-center gap-2">
             <Link 
@@ -594,15 +595,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
       )}
 
       {/* Fixed Bottom Footer with Essential App Navigation: Home, Trivia Hub, Wallet, Setting, Profile */}
-      <footer className="fixed bottom-0 left-0 right-0 md:left-64 z-40 border-t border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#0d0d15]/95 backdrop-blur-md py-2 px-3 sm:px-6 shadow-lg">
+      <footer className="fixed bottom-0 left-0 right-0 md:left-64 z-40 border-t border-[#DEB887]/40 dark:border-white/10 bg-[#FAF7F2]/95 dark:bg-[#15100D]/95 backdrop-blur-md py-2 px-3 sm:px-6 shadow-lg">
         <div className="max-w-md mx-auto flex items-center justify-around">
           <Link
             to="/dashboard"
             className={cn(
               "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
               location.pathname === '/dashboard' || location.pathname === '/'
-                ? "text-green-700 dark:text-[#EAB308] font-bold"
-                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
+                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
+                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
             )}
           >
             <LayoutDashboard className="w-5 h-5" />
@@ -614,8 +615,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
             className={cn(
               "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
               location.pathname === '/trivia' || location.pathname.startsWith('/trivia')
-                ? "text-green-700 dark:text-[#EAB308] font-bold"
-                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
+                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
+                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
             )}
           >
             <Trophy className="w-5 h-5" />
@@ -627,8 +628,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
             className={cn(
               "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
               location.pathname === '/earnings' || location.pathname.startsWith('/earnings')
-                ? "text-green-700 dark:text-[#EAB308] font-bold"
-                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
+                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
+                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
             )}
           >
             <Wallet className="w-5 h-5" />
@@ -640,8 +641,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
             className={cn(
               "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
               location.pathname === '/settings'
-                ? "text-green-700 dark:text-[#EAB308] font-bold"
-                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
+                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
+                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
             )}
           >
             <Settings className="w-5 h-5" />
@@ -653,8 +654,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
             className={cn(
               "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
               location.pathname === '/profile'
-                ? "text-green-700 dark:text-[#EAB308] font-bold"
-                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
+                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
+                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
             )}
           >
             <User className="w-5 h-5" />
@@ -668,6 +669,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
       />
-    </div>
+      </div>
+    </FrameworkBackground>
   );
 };

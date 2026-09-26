@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Search, ShieldAlert, Users } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { canScanEventTickets as checkCanScanEventTickets } from '../lib/authorization';
+import { FrameworkBackground } from '../components/FrameworkBackground';
 
 export const EventCheckIn: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -59,10 +60,99 @@ export const EventCheckIn: React.FC = () => {
     setBusy(null);
   };
 
-  if (loading) return <div className="p-8 text-center font-bold">Loading gate check-in...</div>;
-  if (!allowed) return <div className="mx-auto mt-16 max-w-xl rounded-3xl bg-red-50 p-8 text-center text-red-800"><ShieldAlert className="mx-auto h-10 w-10" /><h1 className="mt-3 text-2xl font-black">Check-in access denied</h1><p className="mt-2 font-semibold">Only the event owner, assigned event staff, or an Admin can check tickets for this event.</p></div>;
+  if (loading) {
+    return (
+      <FrameworkBackground overlayOpacity="from-[#A84C27]/30 via-transparent to-[#576B57]/50">
+        <div className="p-12 text-center text-white font-bold">Loading gate check-in...</div>
+      </FrameworkBackground>
+    );
+  }
 
-  return <main className="min-h-screen bg-slate-50 p-6 md:p-10"><div className="mx-auto max-w-5xl space-y-8"><header><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Gate operations</p><h1 className="mt-2 text-4xl font-black text-slate-950">{event?.title} check-in</h1><p className="mt-2 flex items-center gap-2 text-slate-500"><Users className="h-4 w-4" />{tickets.filter((ticket) => ticket.checked_in).length}/{tickets.length} checked in</p></header><div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"><Search className="h-5 w-5 text-slate-400" /><input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Scan or enter ticket number / QR hash" className="h-12 flex-1 border-0 text-sm font-bold outline-none" /></div>{message && <p className="rounded-xl bg-emerald-50 p-3 font-bold text-emerald-800">{message}</p>}{error && <p className="rounded-xl bg-red-50 p-3 font-bold text-red-800">{error}</p>}<div className="space-y-3">{visibleTickets.map((ticket) => <div key={ticket.id} className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between"><div><p className="font-black">{ticket.ticket_number}</p><p className="text-sm text-slate-500">{ticket.attendee_name} · {ticket.attendee_email}</p><p className="text-xs font-bold uppercase text-slate-400">{ticket.payment_status}</p></div><button disabled={busy === ticket.id} onClick={() => toggleCheckIn(ticket)} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black ${ticket.checked_in ? 'bg-slate-100 text-slate-700' : 'bg-emerald-700 text-white'}`}><CheckCircle2 className="h-4 w-4" />{busy === ticket.id ? 'Saving...' : ticket.checked_in ? 'Reverse check-in' : 'Check in'}</button></div>)}{!visibleTickets.length && <p className="rounded-2xl bg-white p-8 text-slate-500">No matching tickets.</p>}</div></div></main>;
+  if (!allowed) {
+    return (
+      <FrameworkBackground overlayOpacity="from-[#A84C27]/30 via-transparent to-[#576B57]/50">
+        <div className="mx-auto mt-16 max-w-xl rounded-3xl bg-[#FAF7F2] p-8 text-center text-[#2C2216] border border-[#DEB887]/60 shadow-xl">
+          <ShieldAlert className="mx-auto h-10 w-10 text-[#B15332]" />
+          <h1 className="mt-3 text-2xl font-serif font-black">Check-in access denied</h1>
+          <p className="mt-2 text-sm text-stone-600">Only the event owner, assigned event staff, or an Admin can check tickets for this event.</p>
+          <Link to="/events" className="inline-block mt-4 text-xs font-bold text-[#B15332] hover:underline">
+            Back to Events
+          </Link>
+        </div>
+      </FrameworkBackground>
+    );
+  }
+
+  return (
+    <FrameworkBackground overlayOpacity="from-[#A84C27]/30 via-transparent to-[#576B57]/50">
+      <main className="min-h-screen p-6 md:p-10 text-white">
+        <div className="mx-auto max-w-5xl space-y-8">
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[#F5EEDB]">Gate Operations</p>
+              <h1 className="mt-2 text-4xl font-serif font-black text-white">{event?.title} Check-in</h1>
+              <p className="mt-2 flex items-center gap-2 text-white/80 text-sm">
+                <Users className="h-4 w-4" />
+                {tickets.filter((ticket) => ticket.checked_in).length}/{tickets.length} attendees checked in
+              </p>
+            </div>
+            <Link
+              to={`/events/${eventId}`}
+              className="self-start sm:self-auto text-xs font-bold text-white/90 hover:text-white px-4 py-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 transition active:scale-95"
+            >
+              Event Page →
+            </Link>
+          </header>
+
+          <div className="flex items-center gap-3 rounded-2xl bg-[#FAF7F2] text-[#2C2216] p-4 shadow-xl border border-[#DEB887]/60">
+            <Search className="h-5 w-5 text-stone-400" />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Scan or enter ticket number / QR hash / attendee name"
+              className="h-12 flex-1 border-0 text-sm font-bold text-[#2C2216] bg-transparent outline-none placeholder:text-stone-400"
+            />
+          </div>
+
+          {message && <p className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs font-bold text-emerald-800">{message}</p>}
+          {error && <p className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs font-bold text-red-800">{error}</p>}
+
+          <div className="space-y-3">
+            {visibleTickets.map((ticket) => (
+              <div
+                key={ticket.id}
+                className="flex flex-col gap-4 rounded-2xl bg-[#FAF7F2] text-[#2C2216] p-5 shadow-xl border border-[#DEB887]/60 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <p className="font-bold text-base text-[#2C2216]">{ticket.ticket_number}</p>
+                  <p className="text-xs text-stone-600 mt-0.5">{ticket.attendee_name} • {ticket.attendee_email}</p>
+                  <p className="text-[10px] font-black uppercase text-stone-400 mt-1">{ticket.payment_status}</p>
+                </div>
+                <button
+                  disabled={busy === ticket.id}
+                  onClick={() => toggleCheckIn(ticket)}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-bold transition active:scale-95 cursor-pointer ${
+                    ticket.checked_in
+                      ? 'bg-stone-200 text-stone-800 hover:bg-stone-300'
+                      : 'bg-[#B15332] text-white hover:bg-[#8F3B1D] shadow-sm'
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {busy === ticket.id ? 'Saving...' : ticket.checked_in ? 'Reverse check-in' : 'Check in Pass'}
+                </button>
+              </div>
+            ))}
+            {!visibleTickets.length && (
+              <p className="rounded-2xl bg-[#FAF7F2] text-[#2C2216] p-8 text-center text-sm font-bold border border-[#DEB887]/60">
+                No matching tickets found.
+              </p>
+            )}
+          </div>
+        </div>
+      </main>
+    </FrameworkBackground>
+  );
 };
 
 export default EventCheckIn;

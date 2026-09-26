@@ -1,17 +1,29 @@
 {
-  "id": "/evex-app",
-  "name": "EVVEX — Events, Tickets, Marketplace & Content",
+  "id": "/evvex-app",
+  "name": "EVVEX — Live Experiences, Tickets & Gatherings",
   "short_name": "EVVEX",
   "description": "EVVEX is Nigeria's premier live event discovery, VIP ticketing, gate scanning, vendor marketplace, and host management platform.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#2E7D32",
+  "background_color": "#15100D",
+  "theme_color": "#933D1E",
   "orientation": "portrait-primary",
-  "categories": ["books", "entertainment", "education"],
+  "categories": ["events", "entertainment", "lifestyle"],
   "prefer_related_applications": false,
   "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192.png",
       "type": "image/png",
@@ -23,33 +35,29 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-192-maskable.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-512-maskable.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
-      "name": "Browse Books",
-      "short_name": "Books",
-      "description": "Browse eBooks in CalmReader",
+      "name": "Explore Gatherings",
+      "short_name": "Events",
+      "description": "Explore live concerts, festivals, and gatherings",
       "url": "/",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Tickets",
+      "short_name": "Tickets",
+      "description": "View purchased passes and gate QR codes",
+      "url": "/tickets",
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Host an Event",
+      "short_name": "Host",
+      "description": "Create and post live gatherings",
+      "url": "/manager",
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
     }
   ]
 }

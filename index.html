@@ -20,14 +20,14 @@
 
     <!-- PWA Meta Tags & Manifest -->
     <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#2E7D32" />
+    <meta name="theme-color" content="#933D1E" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="EVVEX" />
-    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d97706'%3E%3Cpath d='M21 5c-1.11-.9-2.58-1.4-4-1.4-1.35 0-2.72.33-4 .84C11.72 3.93 10.35 3.6 9 3.6c-1.42 0-2.89.5-4 1.4-1.1.9-1.7 2.2-1.7 3.6v11.1c0 .5.42.84.9.84.11 0 .22-.03.33-.07C5.64 20.01 7.28 19.5 9 19.5c1.65 0 3.3.5 4.5 1.4 1.1-.9 2.75-1.4 4.5-1.4 1.72 0 3.36.51 4.51 1.03.1.04.21.07.33.07.48 0 .9-.34.9-.84V8.6c0-1.4-.6-2.7-1.7-3.6zM9 18c-1.35 0-2.72.33-4 .84V6.83c1.11-.9 2.58-1.43 4-1.43 1.35 0 2.72.33 4 .84v11.93C11.72 17.67 10.35 18 9 18zm10 .84c-1.28-.51-2.65-.84-4-.84-1.35 0-2.72.33-4 .84V6.24c1.28-.51 2.65-.84 4-.84 1.42 0 2.89.53 4 1.43v12.01z'/%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     
     <script>
       // Register Service Worker for PWA Offline Caching and Installation support
@@ -317,7 +317,160 @@
         }
       }, 8000);
     </script>
-    <div id="root"></div>
+    <div id="root">
+      <!-- EVVEX Framework Instant Boot Loader -->
+      <style>
+        #evvex-boot-loader {
+          position: fixed;
+          inset: 0;
+          z-index: 999999;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          width: 100vw;
+          background: radial-gradient(ellipse at 50% 30%, #A84C27 0%, #431407 50%, #15100D 100%);
+          font-family: 'Playfair Display', Georgia, serif;
+          user-select: none;
+          overflow: hidden;
+          margin: 0;
+          padding: 20px;
+          box-sizing: border-box;
+        }
+        .evvex-card {
+          width: 100%;
+          max-width: 380px;
+          background: linear-gradient(145deg, rgba(147, 61, 30, 0.88) 0%, rgba(30, 20, 15, 0.94) 100%);
+          border: 1px solid rgba(253, 230, 138, 0.35);
+          border-radius: 24px;
+          padding: 32px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          box-shadow: 0 25px 60px -15px rgba(0,0,0,0.85);
+          position: relative;
+        }
+        .evvex-card::before {
+          content: '';
+          position: absolute;
+          inset: 8px;
+          border: 1px dashed rgba(253, 230, 138, 0.3);
+          border-radius: 16px;
+          pointer-events: none;
+        }
+        .evvex-logo-wrap {
+          width: 72px;
+          height: 72px;
+          margin-bottom: 16px;
+          animation: evvexPulse 2.6s ease-in-out infinite alternate;
+        }
+        .evvex-title {
+          font-size: 32px;
+          font-weight: 900;
+          letter-spacing: 0.25em;
+          margin: 0 0 6px 0;
+          background: linear-gradient(90deg, #FDE68A 0%, #FFFFFF 30%, #F59E0B 70%, #FDE68A 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: evvexShimmer 2.8s linear infinite;
+        }
+        .evvex-sub {
+          font-family: system-ui, -apple-system, sans-serif;
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.25em;
+          color: rgba(253, 230, 138, 0.8);
+          margin: 0 0 20px 0;
+        }
+        .evvex-divider {
+          width: 80%;
+          border-top: 1px dashed rgba(253, 230, 138, 0.3);
+          margin-bottom: 18px;
+        }
+        .evvex-note {
+          font-family: system-ui, -apple-system, sans-serif;
+          font-size: 12px;
+          color: #fef3c7;
+          margin: 0 0 16px 0;
+          opacity: 0.9;
+        }
+        .evvex-bar-track {
+          width: 180px;
+          height: 5px;
+          border-radius: 9999px;
+          background: rgba(0, 0, 0, 0.4);
+          overflow: hidden;
+          position: relative;
+          border: 1px solid rgba(253, 230, 138, 0.25);
+        }
+        .evvex-bar-beam {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 80px;
+          border-radius: 9999px;
+          background: linear-gradient(90deg, transparent, #FDE68A, transparent);
+          box-shadow: 0 0 10px #F59E0B;
+          animation: evvexBeam 1.8s ease-in-out infinite;
+        }
+        @keyframes evvexShimmer {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+        @keyframes evvexBeam {
+          0% { left: -50%; }
+          100% { left: 120%; }
+        }
+        @keyframes evvexPulse {
+          0% { transform: translateY(0px) scale(1); filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.3)); }
+          100% { transform: translateY(-3px) scale(1.04); filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.7)); }
+        }
+      </style>
+      <div id="evvex-boot-loader">
+        <div class="evvex-card">
+          <div class="evvex-logo-wrap">
+            <svg viewBox="0 0 512 512" width="100%" height="100%">
+              <defs>
+                <radialGradient id="bootClay" cx="50%" cy="38%" r="65%">
+                  <stop offset="0%" stop-color="#C2410C" />
+                  <stop offset="50%" stop-color="#9A3412" />
+                  <stop offset="100%" stop-color="#431407" />
+                </radialGradient>
+                <linearGradient id="bootGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FEF08A" />
+                  <stop offset="35%" stop-color="#F59E0B" />
+                  <stop offset="100%" stop-color="#B45309" />
+                </linearGradient>
+                <linearGradient id="bootShimmer" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#FFFBEB" />
+                  <stop offset="60%" stop-color="#FDE68A" />
+                  <stop offset="100%" stop-color="#F59E0B" />
+                </linearGradient>
+              </defs>
+              <circle cx="256" cy="256" r="236" fill="url(#bootClay)" stroke="url(#bootGold)" stroke-width="12" />
+              <circle cx="256" cy="256" r="212" fill="none" stroke="#FDE68A" stroke-width="3" stroke-dasharray="8,10" opacity="0.65" />
+              <path d="M 124 168 L 184 168 L 256 348 L 328 168 L 388 168 L 284 394 C 274 416, 238 416, 228 394 Z" fill="url(#bootGold)" />
+              <path d="M 178 184 L 226 184 L 256 266 L 286 184 L 334 184 L 272 328 C 266 342, 246 342, 240 328 Z" fill="url(#bootShimmer)" />
+              <g transform="translate(256, 146)">
+                <path d="M 0 -24 Q 0 0 24 0 Q 0 0 0 24 Q 0 0 -24 0 Q 0 0 0 -24 Z" fill="#FFFFFF" />
+                <circle cx="0" cy="0" r="3.5" fill="#F59E0B" />
+              </g>
+            </svg>
+          </div>
+          <h1 class="evvex-title">EVVEX</h1>
+          <p class="evvex-sub">Live Gatherings & VIP Passes</p>
+          <div class="evvex-divider"></div>
+          <p class="evvex-note">Connecting to verified experiences...</p>
+          <div class="evvex-bar-track">
+            <div class="evvex-bar-beam"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

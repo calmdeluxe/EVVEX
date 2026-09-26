@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Ticket, CheckCircle2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { FrameworkBackground } from '../components/FrameworkBackground';
+import { EvvexLogo } from '../components/EvvexLogo';
 
 export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mode }) => {
   const navigate = useNavigate();
@@ -656,28 +658,24 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
   const showGoogleButton = true;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f2ecdf] text-white px-4 py-8 font-sans relative overflow-hidden sm:px-8 sm:py-12">
-      <div className="absolute inset-0 pointer-events-none opacity-35" style={{ backgroundImage: 'linear-gradient(rgba(16,29,53,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(16,29,53,0.035) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
-
-      <div className="mb-5 w-full max-w-5xl z-10 font-sans sm:mb-7">
-        <Link 
-          to="/" 
-          className="inline-flex items-center gap-2 rounded-full border border-[#10203a]/15 bg-white/35 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-[#10203a]/70 transition hover:border-[#ad8543]/60 hover:bg-white/70 hover:text-[#10203a]"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Home</span>
-        </Link>
-      </div>
-
-      <div className="z-10 mb-7 flex w-full max-w-5xl items-center justify-between gap-5 sm:mb-9">
-      <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-        <div className="grid size-11 place-items-center rounded-2xl bg-[#10203a] text-[#e3c581] shadow-lg">
-          <Ticket className="w-6 h-6" />
+    <FrameworkBackground overlayOpacity="from-[#A84C27]/40 via-transparent to-[#576B57]/50">
+      <div className="min-h-screen flex flex-col items-center justify-center text-white px-4 py-8 font-sans relative sm:px-8 sm:py-12">
+        <div className="mb-5 w-full max-w-5xl z-10 font-sans sm:mb-7">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 backdrop-blur-md px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/25 active:scale-95"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Home</span>
+          </Link>
         </div>
-        <h1 className="text-2xl font-black font-sans tracking-[0.08em] text-[#10203a]">EVVEX</h1>
-      </Link>
-      <p className="hidden text-right text-xs font-semibold text-[#263650]/60 sm:block">Where moments become memories.</p>
-      </div>
+
+        <div className="z-10 mb-7 flex w-full max-w-5xl items-center justify-between gap-5 sm:mb-9">
+          <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <EvvexLogo size="md" variant="light" />
+          </Link>
+          <p className="hidden text-right text-xs font-bold text-white/80 sm:block">Where moments become memories.</p>
+        </div>
 
       <Card className="z-10 w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/15 bg-[#10203a] shadow-[0_26px_70px_rgba(16,32,58,0.24)] md:grid md:grid-cols-[0.85fr_1.15fr]">
         <div className="relative hidden min-h-full flex-col justify-between overflow-hidden border-r border-white/10 bg-[#0c1a31] p-10 md:flex lg:p-12">
@@ -1055,6 +1053,7 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
         </CardFooter>
         </div>
       </Card>
-    </div>
+      </div>
+    </FrameworkBackground>
   );
 };

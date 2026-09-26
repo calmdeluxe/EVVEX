@@ -79,6 +79,7 @@ import { MyTickets } from './pages/MyTickets';
 import { EventCheckIn } from './pages/EventCheckIn';
 import { TriviaBanner } from './components/TriviaBanner';
 import { PaystackSetup } from './components/PaystackSetup';
+import { EvvexLoader } from './components/EvvexLoader';
 import { Button } from '@/components/ui/button';
 import { FULL_SUPABASE_SQL, RECURSION_FIX_SQL } from './lib/migrations';
 import { AlertTriangle, Copy, ExternalLink, RefreshCw, ShieldAlert, XCircle, ShieldCheck, FileText } from 'lucide-react';
@@ -231,35 +232,9 @@ const AppContent = () => {
     return () => clearTimeout(timer);
   }, [isCapacitor]);
 
-  // If not ready and render not yet allowed, show a brief loader. 
+  // If not ready and render not yet allowed, show EVVEX framework loader
   if (!isAuthReady && !allowRender) {
-    return (
-      <div style={{ 
-        height: '100vh', 
-        width: '100%', 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        backgroundColor: '#f9fafb',
-        fontFamily: 'sans-serif'
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #15803d',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>{`
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        `}</style>
-        <p style={{ marginTop: '16px', color: '#6b7280', fontSize: '14px', fontWeight: 'bold' }}>
-          Initializing EVVEX...
-        </p>
-      </div>
-    );
+    return <EvvexLoader message="Opening EVVEX Experiences" />;
   }
 
   return (
