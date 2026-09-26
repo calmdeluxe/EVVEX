@@ -622,17 +622,12 @@ export const EventLandingPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
+                   );
+                 })
+               </div>
+             )}
+           </div>
+         </section>
 
         {/* ── 5. FLOATING CIRCULAR COUNTDOWN BADGE ── */}
         <div className="fixed bottom-6 right-6 z-40">

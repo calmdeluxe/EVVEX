@@ -324,5 +324,7 @@ export const EventMarketplace: React.FC = () => {
         </div>
       </main>
     </FrameworkBackground>
+  );
+};
 
 export default EventMarketplace;
