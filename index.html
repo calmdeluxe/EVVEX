@@ -464,7 +464,7 @@
           <h1 class="evvex-title">EVVEX</h1>
           <p class="evvex-sub">Live Gatherings & VIP Passes</p>
           <div class="evvex-divider"></div>
-          <p class="evvex-note">Connecting to verified experiences...</p>
+          <p class="evvex-note" id="evvex-boot-note">Connecting to verified experiences...</p>
           <div class="evvex-bar-track">
             <div class="evvex-bar-beam"></div>
           </div>
@@ -472,6 +472,17 @@
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      setTimeout(function() {
+        var loader = document.getElementById('evvex-boot-loader');
+        if (loader && !window.__REACT_STARTED__) {
+          var note = document.getElementById('evvex-boot-note');
+          if (note) {
+            note.innerHTML = '<span style="color:#FDE68A;font-weight:600;">Taking longer than expected...</span><br/><button onclick="window.location.reload()" style="margin-top:10px;padding:6px 14px;background:#F59E0B;color:#1E140F;border:none;border-radius:9999px;font-weight:bold;font-size:11px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);">Reload App</button>';
+          }
+        }
+      }, 4000);
+    </script>
   </body>
 </html>
 
