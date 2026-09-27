@@ -1,18 +1,18 @@
 {
+  "appName": "EVVEX",
   "version": "1.0.1",
-  "downloadUrl": "https://calmreader.qzz.io/calmreader.apk",
+  "downloadUrl": "/evvex-latest.apk",
   "versionCode": 2,
-  "releaseDate": "2026-09-06",
-  "fileSize": "8.5 MB",
+  "releaseDate": "2026-09-27",
+  "fileSize": "7.1 MB",
   "minAndroid": "Android 8.0+ (Oreo or higher)",
   "packageName": "com.calmreader.mobile",
-  "notes": "Updated Author registration fee to ₦5,000, MPR Partner analytics dashboard & audit trail, and optimized arm64-v8a native release package.",
-  "latestDownloadUrl": "https://calmreader.qzz.io/calmreader.apk",
-  "githubReleaseUrl": "https://github.com/Xafelynk1/Calmreader1/releases/download/v1.0.1/calmreader.apk",
+  "notes": "EVVEX Live Gathering Discovery, VIP Ticketing, Host Studio & Gate Pass Scanner.",
+  "latestDownloadUrl": "/evvex-latest.apk",
   "changelog": [
-    "Updated Author tier registration prize to 5,000 Naira only",
-    "Added MPR Analytics Dashboard and Audit Trail tracking",
-    "Optimized arm64-v8a native release APK reducing size from 61MB to ~8MB",
-    "In-app automatic update notification and APK direct downloader"
+    "EVVEX Live Gathering & Event Marketplace",
+    "VIP & Patron exclusive tier ticketing with instant QR codes",
+    "Host Studio, Ticket Validation & Vendor Management",
+    "Optimized high-performance native Android package"
   ]
 }

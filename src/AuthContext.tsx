@@ -51,6 +51,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   getOrCreateProfile: () => Promise<any>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<any>;
   resetInactivityTimer: () => void;
 }
 
@@ -81,6 +82,7 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
   getOrCreateProfile: async () => null,
   signOut: async () => {},
+  signInWithGoogle: async () => ({ data: null, error: null }),
   resetInactivityTimer: () => {},
 });
 
@@ -582,6 +584,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      console.error('Google sign-in error:', error.message);
+      throw error;
+    }
+    return data;
+  };
+
   // ⚠️ CRITICAL SECURITY: ADMIN VERIFICATION VIA CENTRALIZED MAPPING
   const isAdmin = !!(
     isPlatformAdminEmail(user?.email) ||
@@ -655,6 +671,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshProfile, 
       getOrCreateProfile,
       signOut,
+      signInWithGoogle,
       resetInactivityTimer
     }}>
       {children}

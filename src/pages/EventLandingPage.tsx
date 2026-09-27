@@ -568,9 +568,20 @@ export const EventLandingPage: React.FC = () => {
 
                       {/* Card Bottom Bar */}
                       <div className={`mt-4 pt-2 border-t border-black/10 flex items-center justify-between ${bottomBg}`}>
-                        <span className="text-xs sm:text-sm font-black tracking-tight">
-                          {ev.bottomPrimary}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-black tracking-tight">
+                            {ev.bottomPrimary}
+                          </span>
+                          <Link
+                            to={`/events/${ev.id}/apply`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#B15332] hover:bg-[#933D1E] text-white text-[11px] font-bold shadow-sm transition-all"
+                            title="Apply to participate"
+                          >
+                            <UserPlus className="size-3" />
+                            <span>Apply</span>
+                          </Link>
+                        </div>
 
                         <div className="flex items-center gap-1.5">
                           <button
@@ -588,17 +599,6 @@ export const EventLandingPage: React.FC = () => {
                           <div className="w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center group-hover:bg-white group-hover:text-[#933D1E] transition-all">
                             <ArrowRight className="w-3.5 h-3.5" />
                           </div>
-
-                          <Link
-                            to={`/events/${ev.id}/apply`}
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label={`Apply to participate in ${ev.title}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#933D1E] text-white text-[10px] font-bold hover:bg-[#7D3218] transition-colors"
-                          >
-                            <UserPlus className="w-3.5 h-3.5" />
-                            <span>Apply</span>
-                          </Link>
-
                           {/* Category badge */}
                           <span className="absolute bottom-3 left-3 rounded-full bg-[#0A0F1E]/80 backdrop-blur px-2.5 py-0.5 text-[9px] font-bold text-[#F5E6C8] uppercase tracking-wider">
                             {ev.displayTag}
@@ -606,8 +606,8 @@ export const EventLandingPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    );
-                  })}
+                  );
+                })}
               </div>
             )}
           </div>
