@@ -41,7 +41,7 @@ export const VendorRoute: React.FC<VendorRouteProps> = ({ children }) => {
     isPlatformAdmin({ ...(profile || {}), email: user.email, is_admin: isAdmin });
 
   if (!isAuthorizedVendor) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard" replace state={{ accessDenied: true }} />;
   }
 
   return <>{children}</>;

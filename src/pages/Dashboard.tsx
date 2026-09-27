@@ -99,7 +99,8 @@ export const Dashboard: React.FC = () => {
   const { tab } = useParams<{ tab: string }>();
   const activeTab =
     tab &&
-    ["discovery", "analytics", "all", "published", "drafts", "blogs", "videos"].includes(tab)
+    ["discovery", "analytics", "all", "published", "drafts", "blogs", "videos"].includes(tab) &&
+    (tab !== "analytics" || isAdmin || isMpr)
       ? (tab as
           | "all"
           | "published"
@@ -459,8 +460,12 @@ export const Dashboard: React.FC = () => {
         });
       }
 
-      // Fetch Active Trivias inside a safe isolated block
+      // Trivia content is restricted to platform administrators and MPRs.
       try {
+        if (!isAdmin && !isMpr) {
+          setActiveTrivias([]);
+          return;
+        }
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
         const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -497,7 +502,7 @@ export const Dashboard: React.FC = () => {
     } catch (err) {
       console.error("[Dashboard] Discovery fetch error:", err);
     }
-  }, [booksLimit, accountTier]);
+  }, [booksLimit, accountTier, isAdmin, isMpr]);
 
   const fetchData = React.useCallback(async () => {
     if (!user) return;
@@ -860,8 +865,7 @@ export const Dashboard: React.FC = () => {
         {/* Role-Specific Onboarding Guide */}
         {(() => {
           const isAuthorRole = !isAdmin && (accountTier === 'author' || profile?.account_tier === 'author' || profile?.role === 'author');
-          const isPremiumRole = !isAdmin && !isAuthorRole && (accountTier === 'premium' || profile?.account_tier === 'premium' || profile?.is_premium === true);
-          const hasRoleGuide = isAuthorRole || isPremiumRole;
+          const hasRoleGuide = isAuthorRole;
 
           if (!hasRoleGuide) return null;
 
@@ -905,6 +909,7 @@ export const Dashboard: React.FC = () => {
         })()}
 
         {/* Wallet Segment */}
+        {(isAdmin || isMpr || isVendor) && (
         <div className="w-full bg-white dark:bg-[#0d0d15] border border-gray-200/80 dark:border-white/10 p-4 sm:p-5 rounded-2xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             {/* Wallet Balance Pill */}
@@ -958,14 +963,6 @@ export const Dashboard: React.FC = () => {
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
               Performance Stats
             </Button>
-            {accountTier === "free" && (
-              <Button
-                onClick={() => navigate("/upgrade/premium")}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl h-10 gap-1.5 shadow-md shadow-amber-500/20 text-xs"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5" /> Unlock Premium (₦1,500)
-              </Button>
-            )}
             {accountTier === "premium" && (
               <Button
                 onClick={() => navigate("/apply/author")}
@@ -1014,6 +1011,7 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
+        )}
 
         {/* Your Studio & Sidebar Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1040,7 +1038,7 @@ export const Dashboard: React.FC = () => {
                       ) : (
                         <>
                           <BookOpen className="w-4 h-4 text-indigo-700" />
-                          Content & Media Studio
+                          Discovery Feed
                         </>
                       )}
                     </CardTitle>
@@ -1049,7 +1047,7 @@ export const Dashboard: React.FC = () => {
                         ? "Manage and monitor your vendor products, storefront listings, and catalog."
                         : (isAdmin || isMpr)
                           ? "Manage and monitor your live events, venue schedules, and ticket tiers."
-                          : "Manage and monitor your portfolio and interactive content."}
+                          : "Discover books, stories, and media from the EVVEX community."}
                     </CardDescription>
                   </div>
 
@@ -1085,6 +1083,7 @@ export const Dashboard: React.FC = () => {
                           "videos",
                         ] as const
                       ).map((t) => {
+                        if (t === "analytics" && !isAdmin && !isMpr) return null;
                         if (!isAuthor && t !== "discovery") return null;
                         return (
                           <button
@@ -1139,7 +1138,7 @@ export const Dashboard: React.FC = () => {
                       </div>
                     ) : activeTab === "discovery" ? (
                       <div className="space-y-12 col-span-full">
-                        {activePromo &&
+                        {(isAdmin || isMpr) && activePromo &&
                           Date.now() <
                             new Date(activePromo.end_time).getTime() && (
                             <motion.div
@@ -1973,7 +1972,7 @@ export const Dashboard: React.FC = () => {
                       🎥 Video Masterclasses
                     </Button>
                   </div>
-                  {activePromo &&
+                  {(isAdmin || isMpr) && activePromo &&
                     Date.now() < new Date(activePromo.end_time).getTime() && (
                       <motion.div
                         initial={{ opacity: 0, y: 15 }}
@@ -2241,7 +2240,7 @@ export const Dashboard: React.FC = () => {
                   </div>
 
                   {/* Flash Trivia Hub */}
-                  {activeTrivias.length > 0 && (
+                  {(isAdmin || isMpr) && activeTrivias.length > 0 && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -2681,7 +2680,7 @@ export const Dashboard: React.FC = () => {
 
 
 
-        <section className="space-y-4">
+        {(isAdmin || isMpr || isVendor) && <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">
               Recent Transactions
@@ -2763,7 +2762,7 @@ export const Dashboard: React.FC = () => {
               </table>
             </div>
           </Card>
-        </section>
+        </section>}
         <DeleteConfirmationModal
           isOpen={!!bookToDelete}
           title={bookToDelete?.title || ""}

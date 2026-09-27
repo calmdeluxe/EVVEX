@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { canAccessCreatorStudio } from '../lib/authorization';
 
@@ -40,24 +40,7 @@ export const CreatorRoute: React.FC<CreatorRouteProps> = ({ children }) => {
     canAccessCreatorStudio({ ...(profile || {}), email: user.email, is_admin: isAdmin, accountTier });
 
   if (!isAuthorizedCreator) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 text-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md">
-          <h2 className="text-2xl font-bold text-amber-600">Creator Access Required</h2>
-          <p className="text-gray-500 mt-2">
-            To create and manage events or published content, you need an Event Creator account.
-          </p>
-          <div className="flex flex-col gap-3 mt-6">
-            <Link to="/apply/author" className="bg-green-700 text-white px-6 py-2 rounded-lg font-bold text-center">
-              Become an Event Creator
-            </Link>
-            <Link to="/dashboard" className="text-gray-500 underline text-sm">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to="/dashboard" replace state={{ accessDenied: true }} />;
   }
 
   return <>{children}</>;

@@ -434,79 +434,6 @@ const __dirname = path.dirname(__filename);
 export async function startServer() {
   const supabase = getSupabase();
 
-  // 🛡️ CRITICAL SECURITY: Admin Cleanup on Start (Non-blocking Background Task)
-  // Ensure only authorized emails have admin privileges in the database
-  if (supabase && !supabase.__isDummy) {
-    console.log("[Server] Running Admin Privilege Cleanup in background...");
-    (async () => {
-      try {
-        const ADMIN_EMAILS = ["samuelchukwuemeke05@gmail.com", "chukwuemekedaniella@gmail.com", "winbigonly@gmail.com"].map((e) => e.toLowerCase());
-
-        // 1. Demote any non-whitelisted admin roles
-        const { error: cleanupError } = await supabase
-          .from("profiles")
-          .update({ app_role: "guest" })
-          .not("email", "in", `(${ADMIN_EMAILS.join(",")})`)
-          .eq("app_role", "admin");
-
-        if (cleanupError) {
-          console.warn(
-            "[Server] Admin Cleanup (Phase 1) Warning:",
-            cleanupError.message,
-          );
-        }
-
-        // 2. Ensure authorized are admins
-        const { error: promoteError } = await supabase
-          .from("profiles")
-          .update({ app_role: "admin" })
-          .in("email", ADMIN_EMAILS);
-
-        if (promoteError) {
-          console.warn(
-            "[Server] Admin Cleanup (Phase 2) Warning:",
-            promoteError.message,
-          );
-        }
-
-        console.log("[Server] Admin Privilege Cleanup Complete.");
-
-        // 3. Fix trivia creation defaults & access:
-        // Ensure all active trivias have starts_at, valid requires_premium flag, and marketing type
-        try {
-          // Fix all reader_reward trivias that are missing a start date
-          await supabase
-            .from("trivias")
-            .update({ requires_premium: false })
-            .eq("type", "reader_reward")
-            .eq("requires_premium", true)
-            .is("starts_at", null);
-
-          // Set default start date for active trivias missing starts_at
-          const { data: missingStarts } = await supabase
-            .from("trivias")
-            .select("id, created_at")
-            .eq("is_active", true)
-            .eq("status", "active")
-            .is("starts_at", null);
-
-          if (missingStarts && missingStarts.length > 0) {
-            for (const t of missingStarts) {
-              await supabase
-                .from("trivias")
-                .update({ starts_at: t.created_at || new Date().toISOString() })
-                .eq("id", t.id);
-            }
-          }
-        } catch (tErr: any) {
-          console.warn("[Server] Trivia access healing check warning:", tErr?.message);
-        }
-      } catch (e) {
-        console.error("[Server] Admin Cleanup CRITICAL failure:", e);
-      }
-    })();
-  }
-
   const env = process.env.NODE_ENV || "development";
   console.log(`[Server] Starting in ${env} mode...`);
 
@@ -6909,7 +6836,9 @@ export async function startServer() {
             full_name: fullName,
             username: username,
             phone: phoneNumber,
-            date_of_birth: dateOfBirth
+            date_of_birth: dateOfBirth,
+            app_role: 'guest',
+            account_tier: 'free',
           }
         }
       });
@@ -10912,10 +10841,6 @@ export async function startServer() {
       console.log(
         `[Server] Listening on http://localhost:${PORT} [${process.env.NODE_ENV || "dev"}]`,
       );
-      // Background self-healing seed task
-      autoSeedTriviasAndVerify().catch((e) => {
-        console.error("[Server] Auto-seed background worker error:", e);
-      });
     });
   }
 

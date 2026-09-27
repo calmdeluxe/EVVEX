@@ -44,7 +44,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
   if (!isAuthorizedAdmin) {
     clearStoredRedirectIntent();
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard" replace state={{ accessDenied: true }} />;
   }
 
   return <>{children}</>;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import * as ReactNamespace from 'react';
 import axios from 'axios';
-import { BrowserRouter, HashRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import { CapacitorProvider } from './components/CapacitorProvider';
 import { supabase, supabaseConfigStatus } from './supabase';
@@ -34,7 +34,6 @@ import { BlogPost } from './pages/BlogPost';
 import { BrowseVideos } from './pages/BrowseVideos';
 import { BrowseAuthors } from './pages/BrowseAuthors';
 import { AuthorProfile } from './pages/AuthorProfile';
-import { PremiumUpgrade } from './pages/PremiumUpgrade';
 import { AuthorApplication } from './pages/AuthorApplication';
 import { AnonymousConfessions } from './pages/AnonymousConfessions';
 import { AdminConfessions } from './pages/AdminConfessions';
@@ -63,6 +62,7 @@ import { AdminRoute } from './components/AdminRoute';
 import { CreatorRoute } from './components/CreatorRoute';
 import { VendorRoute } from './components/VendorRoute';
 import { TriviaRoute } from './components/TriviaRoute';
+import { BusinessRoute } from './components/BusinessRoute';
 import { EbookPage } from './pages/EbookPage';
 import { AuthorAnalytics } from './pages/AuthorAnalytics';
 import { TriviaSharedPage } from './pages/TriviaSharedPage';
@@ -95,6 +95,38 @@ const AppRouter: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // EVEX Architecture Aliases
 const AuthorRoute = CreatorRoute;
 const AdminOrPartnerRoute = AdminRoute;
+
+const AccessDeniedToast: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!(location.state as any)?.accessDenied) return;
+    setVisible(true);
+    const timer = window.setTimeout(() => {
+      setVisible(false);
+      navigate(location.pathname + location.search, { replace: true, state: null });
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [location.key, location.pathname, location.search, location.state, navigate]);
+
+  if (!visible) return null;
+  return (
+    <div role="alert" aria-live="assertive" className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-lg border border-red-200 bg-red-800 px-4 py-3 text-sm font-bold text-white shadow-xl">
+      Access Denied: Unauthorized Role.
+    </div>
+  );
+};
+
+const CreateBookAccessRoute: React.FC = () => {
+  const { search } = useLocation();
+  const createType = new URLSearchParams(search).get('type');
+  if (createType === 'event' || createType === 'ticket') {
+    return <MPRRoute><CreateBook /></MPRRoute>;
+  }
+  return <CreatorRoute><CreateBook /></CreatorRoute>;
+};
 
 const HomeRedirect: React.FC = () => {
   const { user, loading } = useAuth();
@@ -281,7 +313,7 @@ const AppContent = () => {
           <Route path="/download-app" element={<DownloadAppPage />} />
 
           {/* Protected Routes */}
-          <Route path="/upgrade/premium" element={<PrivateRoute><PremiumUpgrade /></PrivateRoute>} />
+          <Route path="/upgrade/premium" element={<Navigate to="/events" replace />} />
           <Route path="/apply/author" element={<PrivateRoute><AuthorApplication /></PrivateRoute>} />
           <Route path="/payment" element={<PrivateRoute><PublicPurchase /></PrivateRoute>} />
             <Route path="/my-tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
@@ -291,7 +323,7 @@ const AppContent = () => {
             <Route path="/check-in/:eventId" element={<PrivateRoute><EventCheckIn /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/dashboard/:tab" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/create-book" element={<CreatorRoute><CreateBook /></CreatorRoute>} />
+          <Route path="/create-book" element={<CreateBookAccessRoute />} />
           <Route path="/create-event" element={<MPRRoute><CreateBook /></MPRRoute>} />
           <Route path="/create-ticket" element={<MPRRoute><CreateBook /></MPRRoute>} />
           <Route path="/create-product" element={<VendorRoute><CreateBook /></VendorRoute>} />
@@ -299,11 +331,11 @@ const AppContent = () => {
           <Route path="/book/:id/preview" element={<PrivateRoute><ReadBook /></PrivateRoute>} />
           <Route path="/redeem" element={<RedeemToken />} />
           <Route path="/edit/:id" element={<CreatorRoute><CreateBook /></CreatorRoute>} />
-          <Route path="/promo-studio" element={<PrivateRoute><PromoStudio /></PrivateRoute>} />
+          <Route path="/promo-studio" element={<MPRRoute><PromoStudio /></MPRRoute>} />
           <Route path="/sell/:id" element={<CreatorRoute><SellBook /></CreatorRoute>} />
           <Route path="/my-books" element={<CreatorRoute><MyBooks /></CreatorRoute>} />
-          <Route path="/analytics" element={<PrivateRoute><AuthorAnalytics /></PrivateRoute>} />
-          <Route path="/earnings" element={<PrivateRoute><Earnings /></PrivateRoute>} />
+          <Route path="/analytics" element={<MPRRoute><AuthorAnalytics /></MPRRoute>} />
+          <Route path="/earnings" element={<BusinessRoute><Earnings /></BusinessRoute>} />
           <Route path="/mpr" element={<MPRRoute><MprDashboard /></MPRRoute>} />
           <Route path="/mpr/*" element={<MPRRoute><MprDashboard /></MPRRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
@@ -355,12 +387,15 @@ const AppContent = () => {
           <Route path="/admin/mpr-analytics" element={<AdminRoute><AdminMprAnalytics /></AdminRoute>} />
           <Route path="/admin/mpr/analytics" element={<Navigate to="/admin/mpr-analytics" replace />} />
           <Route path="/admin/mpr-audit" element={<AdminRoute><AdminMprAudit /></AdminRoute>} />
+          <Route path="/admin/*" element={<AdminRoute><Navigate to="/admin" replace /></AdminRoute>} />
           <Route path="/admin/mpr/audit" element={<Navigate to="/admin/mpr-audit" replace />} />
           <Route path="/admin/audit-trail" element={<Navigate to="/admin/mpr-audit" replace />} />
           <Route path="/admin/mpr" element={<Navigate to="/admin/mpr-hub" replace />} />
           
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
+
+        <AccessDeniedToast />
         
         {/* Global Components */}
         <PaystackSetupWrapper />

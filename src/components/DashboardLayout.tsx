@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -32,6 +32,7 @@ import {
   Trophy,
   User,
   Ticket,
+  CalendarDays,
   Store,
   ShoppingBag,
   FileText
@@ -52,7 +53,7 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hideMobileHeader = false }) => {
-  const { profile, user, isAdmin, accountTier } = useAuth();
+  const { profile, user, isAdmin, isMpr: contextIsMpr, isVendor, accountTier } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -66,6 +67,32 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifWarning, setNotifWarning] = useState<string | null>(null);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [hasSubmittedApplication, setHasSubmittedApplication] = useState(false);
+  const bottomNavRef = useRef<HTMLDivElement>(null);
+  const [hasMoreBottomNav, setHasMoreBottomNav] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!user?.id) {
+      setHasSubmittedApplication(false);
+      return;
+    }
+
+    supabase
+      .from('event_applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('applicant_id', user.id)
+      .then(({ count, error }) => {
+        if (!mounted) return;
+        if (error) {
+          setHasSubmittedApplication(false);
+          return;
+        }
+        setHasSubmittedApplication((count || 0) > 0);
+      });
+
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -166,31 +193,27 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
     }
   };
 
-  const isMpr = 
-    accountTier === 'marketing_partner' || 
-    accountTier === 'mpr' || 
-    (user as any)?.account_tier === 'mpr' ||
-    (user as any)?.role === 'marketing_partner' ||
-    profile?.account_tier === 'marketing_partner' || 
-    profile?.account_tier === 'mpr' || 
-    profile?.role === 'marketing_partner' || 
-    accountTier === 'admin' || 
-    isAdmin;
-
-  const isVendorUser = 
+  const isMpr = contextIsMpr || isAdmin;
+  const isVendorUser = isVendor || (
     accountTier === 'author' || 
     (user as any)?.account_tier === 'author' || 
     (user as any)?.role === 'vendor' ||
     profile?.account_tier === 'vendor' ||
     profile?.app_role === 'vendor' ||
     profile?.is_approved_author === true ||
-    profile?.is_author === true;
+    profile?.is_author === true
+  );
+  const isPatronUser = !isVendorUser && !isAdmin && !isMpr;
 
   const menuItems: { icon: any; label: string; path: string; hidden?: boolean; color?: string; action?: () => void }[] = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Ticket, label: 'Tickets & Purchases', path: '/bookshelf' },
-    { icon: Ticket, label: 'Browse EVEX Events', path: '/events' },
-    { icon: Ticket, label: 'My EVEX Tickets', path: '/my-tickets' },
+    { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
+    { icon: CalendarDays, label: 'Events', path: '/events' },
+    { icon: Ticket, label: 'My Tickets', path: '/my-tickets' },
+    { icon: FileText, label: 'My Applications', path: '/my-applications', hidden: !hasSubmittedApplication },
+    { icon: Newspaper, label: 'Blog', path: '/blog' },
+    { icon: MessageSquare, label: 'Help & Support', path: '/request' },
+    { icon: User, label: 'Profile', path: '/profile' },
+    { icon: Settings, label: 'Account Settings', path: '/settings' },
     { icon: ShieldCheck, label: 'ADMIN CENTER', path: '/admin', hidden: !isAdmin && accountTier !== 'admin', color: "text-red-700 font-black animate-pulse bg-red-50" },
     { icon: Heart, label: 'Confessions Studio', path: '/admin/confessions', hidden: !isAdmin && accountTier !== 'admin', color: "text-pink-600" },
     { icon: Users, label: '★ MPR Partner Center', path: '/mpr', hidden: !isMpr, color: "text-purple-700 dark:text-purple-400 font-black bg-purple-50 dark:bg-purple-950/30" },
@@ -198,7 +221,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
     { icon: FileText, label: 'Application Review', path: '/manage-applications', hidden: !isMpr && !isAdmin, color: "text-amber-800 font-bold" },
     
     // Event & Ticket Creation (ADMIN & MPR ONLY — Strictly forbidden for Vendors)
-    { icon: Ticket, label: '+ Create Event & Ticket', path: '/create-book?type=event', hidden: !isAdmin && !isMpr, color: "text-amber-500 font-bold" },
+    { icon: Ticket, label: '+ Create Event & Ticket', path: '/create-event', hidden: !isAdmin && !isMpr, color: "text-amber-500 font-bold" },
     
     // Trivia Engine (ADMIN & MPR ONLY — Strictly forbidden for Vendors, Patrons, VIPs)
     { icon: Trophy, label: 'Trivia Engine', path: '/trivia', hidden: !isAdmin && !isMpr, color: "text-purple-600 font-bold" },
@@ -209,23 +232,55 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
     { icon: Newspaper, label: '+ Blog & Vendor Post', path: '/create-book?type=blog', hidden: !isVendorUser && !isAdmin && !isMpr, color: "text-indigo-600 font-bold" },
     { icon: BookText, label: 'My Products & Listings', path: '/my-books', hidden: !isVendorUser && !isAdmin },
     
-    // Onboarding / Upgrades
-    { icon: Zap, label: 'Upgrade to VIP', path: '/upgrade/premium', hidden: accountTier !== 'free', color: "text-amber-600 font-bold" },
-    { icon: Store, label: 'Become a Vendor / Shop', path: '/apply/author', hidden: isVendorUser || accountTier === 'admin' || isMpr, color: "text-indigo-600 font-bold" },
-
     // General Discovery & Operations
-    { icon: BarChart3, label: 'Analytics Dashboard', path: '/analytics', color: "text-emerald-600 font-bold" },
-    { icon: Wand2, label: 'Promo Image Studio', path: '/promo-studio', color: "text-amber-500 font-bold" },
-    { icon: Smartphone, label: '📱 Download Android APK', path: '/download', color: "text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-950/20" },
-    { icon: Store, label: 'Vendor Marketplace', path: '/dashboard/discovery' },
-    { icon: FileText, label: 'My Applications', path: '/my-applications', color: "text-indigo-600 font-bold" },
-    { icon: Wallet, label: 'Earnings', path: '/earnings' },
-    { icon: ArrowUpRight, label: 'Withdrawal', path: '/earnings#withdraw' },
-    { icon: Users, label: 'Referral', path: '/dashboard#referrals' },
-    { icon: Settings, label: 'Settings', path: '/settings' },
-    { icon: ShieldCheck, label: 'Security', path: '/security' },
-    { icon: MessageSquare, label: 'Request Support', path: '/request' },
+    { icon: BarChart3, label: 'Analytics Dashboard', path: '/analytics', hidden: !isAdmin && !isMpr, color: "text-emerald-600 font-bold" },
+    { icon: Wand2, label: 'Promo Image Studio', path: '/promo-studio', hidden: !isAdmin && !isMpr, color: "text-amber-500 font-bold" },
+    { icon: Smartphone, label: 'Download Android APK', path: '/download', hidden: isPatronUser, color: "text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-950/20" },
+    { icon: Store, label: 'Vendor Marketplace', path: '/dashboard/discovery', hidden: !isVendorUser },
+    { icon: Wallet, label: 'Earnings', path: '/earnings', hidden: isPatronUser },
+    { icon: ArrowUpRight, label: 'Withdrawal', path: '/earnings#withdraw', hidden: isPatronUser },
+    { icon: Users, label: 'Referral', path: '/dashboard#referrals', hidden: isPatronUser },
+    { icon: ShieldCheck, label: 'Security', path: '/security', hidden: isPatronUser },
   ];
+
+  const bottomNavItems = isPatronUser
+    ? [
+        { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
+        { icon: CalendarDays, label: 'Events', path: '/events' },
+        { icon: Ticket, label: 'Tickets', path: '/my-tickets' },
+        ...(hasSubmittedApplication ? [{ icon: FileText, label: 'Applications', path: '/my-applications' }] : []),
+        { icon: User, label: 'Profile', path: '/profile' },
+      ]
+    : [
+        { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
+        ...(isAdmin || isMpr ? [{ icon: Trophy, label: 'Trivia Hub', path: '/trivia' }] : []),
+        ...(isAdmin || isMpr || isVendorUser ? [{ icon: Wallet, label: 'Wallet', path: '/earnings' }] : []),
+        { icon: Settings, label: 'Settings', path: '/settings' },
+        { icon: User, label: 'Profile', path: '/profile' },
+        ...(isAdmin || isMpr
+          ? [{ icon: FileText, label: 'Applications', path: '/manage-applications' }]
+          : hasSubmittedApplication
+            ? [{ icon: FileText, label: 'Applications', path: '/my-applications' }]
+            : []),
+      ];
+
+  const updateBottomNavOverflow = () => {
+    const nav = bottomNavRef.current;
+    setHasMoreBottomNav(!!nav && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  };
+
+  useEffect(() => {
+    const nav = bottomNavRef.current;
+    if (!nav) return;
+    updateBottomNavOverflow();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateBottomNavOverflow) : null;
+    observer?.observe(nav);
+    window.addEventListener('resize', updateBottomNavOverflow);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateBottomNavOverflow);
+    };
+  }, [bottomNavItems.length, isPatronUser, isVendorUser, isAdmin, isMpr, hasSubmittedApplication]);
 
   return (
     <FrameworkBackground overlayOpacity="from-[#A84C27]/20 via-[#1C160C]/35 to-[#2A382A]/50">
@@ -597,61 +652,41 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
         </div>
       )}
 
-      {/* Fixed Bottom Footer with Essential App Navigation: Home, Trivia Hub, Wallet, Profile */}
-      <footer className="fixed bottom-0 left-0 right-0 md:left-64 z-40 border-t border-[#DEB887]/40 dark:border-white/10 bg-[#FAF7F2]/95 dark:bg-[#15100D]/95 backdrop-blur-md py-2 px-3 sm:px-6 shadow-lg">
-        <div className="max-w-md mx-auto flex items-center justify-around">
-          <Link
-            to="/dashboard"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
-              location.pathname === '/dashboard' || location.pathname === '/'
-                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
-                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
-            )}
+      <footer
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+        className="fixed bottom-0 left-0 right-0 md:left-64 z-40 border-t border-[#DEB887]/40 dark:border-white/10 bg-[#FAF7F2]/95 dark:bg-[#15100D]/95 backdrop-blur-md pt-2 px-3 sm:px-6 shadow-lg"
+      >
+        <div className="relative mx-auto w-full max-w-2xl">
+          <div
+            ref={bottomNavRef}
+            onScroll={updateBottomNavOverflow}
+            className="flex w-full items-center gap-2 overflow-x-auto scroll-smooth scrollbar-hide px-1"
           >
-            <LayoutDashboard className="w-5 h-5" />
-            <span className="text-[11px] tracking-tight">Home</span>
-          </Link>
-
-          <Link
-            to="/trivia"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
-              location.pathname === '/trivia' || location.pathname.startsWith('/trivia')
-                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
-                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
-            )}
-          >
-            <Trophy className="w-5 h-5" />
-            <span className="text-[11px] tracking-tight">Trivia Hub</span>
-          </Link>
-
-          <Link
-            to="/earnings"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
-              location.pathname === '/earnings' || location.pathname.startsWith('/earnings')
-                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
-                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
-            )}
-          >
-            <Wallet className="w-5 h-5" />
-            <span className="text-[11px] tracking-tight">Wallet</span>
-          </Link>
-
-          <Link
-            to="/profile"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
-              location.pathname === '/profile'
-                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
-                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
-            )}
-          >
-            <User className="w-5 h-5" />
-            <span className="text-[11px] tracking-tight">Profile</span>
-          </Link>
-
+            {bottomNavItems.map((item) => {
+              const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'flex min-w-[68px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 transition-colors',
+                    isActive
+                      ? 'font-bold text-[#933D1E] dark:text-[#EAB308]'
+                      : 'font-medium text-stone-600 hover:text-[#933D1E] dark:text-stone-400 dark:hover:text-[#EAB308]',
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="whitespace-nowrap text-[11px] tracking-tight">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+          {hasMoreBottomNav && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 right-0 top-0 w-8 bg-gradient-to-l from-[#FAF7F2] to-transparent dark:from-[#15100D]"
+            />
+          )}
         </div>
       </footer>
 

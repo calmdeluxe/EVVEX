@@ -509,6 +509,8 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'forgot' }> = ({ mo
             data: {
               full_name: fullName,
               username: username,
+              app_role: 'guest',
+              account_tier: 'free',
             }
           }
         });

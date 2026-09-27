@@ -63,7 +63,7 @@ export const EventLandingPage: React.FC = () => {
   const boardRef = useRef<HTMLDivElement>(null);
 
   // Determine host action destination
-  const hostHref = (isAdmin || isMpr) ? '/create-event' : user ? '/create-book' : '/login?redirect=%2Fcreate-book';
+  const hostHref = '/create-event';
 
   // Tick clock every second
   useEffect(() => {
@@ -256,9 +256,11 @@ export const EventLandingPage: React.FC = () => {
             <button onClick={scrollToBoard} className="text-white/90 hover:text-white transition-colors cursor-pointer">
               Explore Events
             </button>
-            <Link to={hostHref} className="text-white/90 hover:text-white transition-colors">
-              Host an Event
-            </Link>
+            {(isAdmin || isMpr) && (
+              <Link to={hostHref} className="text-white/90 hover:text-white transition-colors">
+                Host an Event
+              </Link>
+            )}
             <Link to="/events" className="text-white/90 hover:text-white transition-colors">
               Marketplace
             </Link>
@@ -322,13 +324,15 @@ export const EventLandingPage: React.FC = () => {
               >
                 Explore Events
               </button>
-              <Link
-                to={hostHref}
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-white/90 hover:text-white py-2 border-b border-white/10"
-              >
-                Host an Event
-              </Link>
+              {(isAdmin || isMpr) && (
+                <Link
+                  to={hostHref}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-white/90 hover:text-white py-2 border-b border-white/10"
+                >
+                  Host an Event
+                </Link>
+              )}
               <Link
                 to="/events"
                 onClick={() => setMobileMenuOpen(false)}
@@ -400,13 +404,14 @@ export const EventLandingPage: React.FC = () => {
               Explore Events
             </button>
 
-            {/* Host an Event Button */}
-            <Link
-              to={hostHref}
-              className="flex-1 max-w-[200px] h-12 rounded-full border border-white/80 text-white hover:bg-white/10 font-semibold text-sm sm:text-base flex items-center justify-center transition-all active:scale-95"
-            >
-              Host an Event
-            </Link>
+            {(isAdmin || isMpr) && (
+              <Link
+                to={hostHref}
+                className="flex-1 max-w-[200px] h-12 rounded-full border border-white/80 text-white hover:bg-white/10 font-semibold text-sm sm:text-base flex items-center justify-center transition-all active:scale-95"
+              >
+                Host an Event
+              </Link>
+            )}
           </div>
         </section>
 
@@ -479,13 +484,15 @@ export const EventLandingPage: React.FC = () => {
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                  <Link
-                    to={hostHref}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#B15332] text-white font-bold text-xs hover:bg-[#8F3B1D] shadow transition active:scale-95"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Post an Event</span>
-                  </Link>
+                  {(isAdmin || isMpr) && (
+                    <Link
+                      to={hostHref}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#B15332] text-white font-bold text-xs hover:bg-[#8F3B1D] shadow transition active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Post an Event</span>
+                    </Link>
+                  )}
 
                   {selectedCategory !== 'All' && (
                     <button

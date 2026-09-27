@@ -38,7 +38,7 @@ export const MPRRoute: React.FC<MPRRouteProps> = ({ children }) => {
     canAccessMpr({ ...(profile || {}), email: user?.email, is_admin: isAdmin });
 
   if (!isAuthorizedMpr) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard" replace state={{ accessDenied: true }} />;
   }
 
   return <>{children}</>;
