@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { APPLICATION_CATEGORIES, APPLICATION_PROCESSING_FEE_KOBO, APPLICATION_TYPES, getApplicationFeeKobo, type ApplicationTypeOption } from '../lib/eventApplications';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,41 +16,6 @@ declare const PaystackPop: any;
 
 const formatPrice = (kobo: number) => `NGN ${(Number(kobo || 0) / 100).toLocaleString()}`;
 
-interface ApplicationTypeOption {
-  value: string;
-  label: string;
-  description: string;
-  requiresFee: boolean;
-  category: 'vendor' | 'staff' | 'participation';
-}
-
-const APPLICATION_TYPES: ApplicationTypeOption[] = [
-  // Vendor/Service categories
-  { value: 'catering', label: 'Caterer', description: 'Food & beverage services', requiresFee: true, category: 'vendor' },
-  { value: 'mc', label: 'Host / MC', description: 'Master of ceremonies, hosting', requiresFee: true, category: 'vendor' },
-  { value: 'dj', label: 'DJ', description: 'Music & entertainment', requiresFee: true, category: 'vendor' },
-  { value: 'photography', label: 'Photographer / Videographer', description: 'Photo & video coverage', requiresFee: true, category: 'vendor' },
-  { value: 'decor', label: 'Decorator', description: 'Venue decoration & styling', requiresFee: true, category: 'vendor' },
-  { value: 'ushers', label: 'Usher Team', description: 'Guest guidance & seating', requiresFee: false, category: 'vendor' },
-  { value: 'security', label: 'Security / Bouncer', description: 'Event security services', requiresFee: false, category: 'vendor' },
-  
-  // Staff roles
-  { value: 'gate_scanner', label: 'Gate Scanner', description: 'Ticket scanning & check-in', requiresFee: false, category: 'staff' },
-  { value: 'usher', label: 'Usher', description: 'Guest assistance & directions', requiresFee: false, category: 'staff' },
-  { value: 'stage_manager', label: 'Stage Manager', description: 'Stage coordination & timing', requiresFee: false, category: 'staff' },
-  
-  // Participation types
-  { value: 'artist_performer', label: 'Artist / Performer', description: 'Live performance, music, dance', requiresFee: true, category: 'participation' },
-  { value: 'speaker', label: 'Speaker', description: 'Keynote, panelist, workshop leader', requiresFee: false, category: 'participation' },
-  { value: 'exhibitor', label: 'Exhibitor', description: 'Showcase products/services', requiresFee: true, category: 'participation' },
-  { value: 'event_partner', label: 'Event Partner', description: 'Strategic partnership', requiresFee: true, category: 'participation' },
-  { value: 'ambassador', label: 'Ambassador', description: 'Promote & represent the event', requiresFee: false, category: 'participation' },
-  { value: 'sponsor', label: 'Sponsor', description: 'Financial or in-kind sponsorship', requiresFee: true, category: 'participation' },
-  { value: 'volunteer', label: 'Volunteer', description: 'General event support', requiresFee: false, category: 'participation' },
-  { value: 'contestant', label: 'Contestant', description: 'Competition participant', requiresFee: false, category: 'participation' },
-  { value: 'other', label: 'Other', description: 'Custom participation type', requiresFee: false, category: 'participation' },
-];
-
 export const EventApplication: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const { user, loading: authLoading } = useAuth();
@@ -61,7 +27,8 @@ export const EventApplication: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [processing, setProcessing] = useState(false);
   const [paystackKey, setPaystackKey] = useState('');
-  const [existingApplication, setExistingApplication] = useState<any>(null);
+  const [existingApplications, setExistingApplications] = useState<any[]>([]);
+  const [acceptedSafetyRules, setAcceptedSafetyRules] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -76,6 +43,8 @@ export const EventApplication: React.FC = () => {
   });
   
   const [selectedType, setSelectedType] = useState<ApplicationTypeOption | null>(null);
+  const existingApplication = existingApplications.find((application) => application.application_type === formData.application_type);
+  const applicationFeeKobo = getApplicationFeeKobo(formData.application_type) || 0;
 
   useEffect(() => {
     const scriptId = 'paystack-inline-js';
@@ -115,13 +84,14 @@ export const EventApplication: React.FC = () => {
 
         // Check for existing application
         if (user?.id && id) {
-          const { data: existing } = await supabase
+          const { data: existing, error: existingError } = await supabase
             .from('event_applications')
             .select('*')
             .eq('event_id', id)
             .eq('applicant_id', user.id)
-            .maybeSingle();
-          setExistingApplication(existing);
+            .order('created_at', { ascending: false });
+          if (existingError) throw existingError;
+          setExistingApplications(existing || []);
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load event');
@@ -139,8 +109,22 @@ export const EventApplication: React.FC = () => {
 
   const handleTypeChange = (typeValue: string) => {
     const type = APPLICATION_TYPES.find(t => t.value === typeValue);
+    const existing = existingApplications.find((application) => application.application_type === typeValue);
     setSelectedType(type || null);
-    setFormData(prev => ({ ...prev, application_type: typeValue }));
+    setFormData(prev => ({
+      ...prev,
+      application_type: typeValue,
+      ...(existing ? {
+        applicant_name: existing.applicant_name || prev.applicant_name,
+        applicant_email: existing.applicant_email || prev.applicant_email,
+        applicant_phone: existing.applicant_phone || prev.applicant_phone,
+        bio: existing.bio || prev.bio,
+        portfolio_url: existing.portfolio_url || '',
+        proposed_fee_kobo: Number(existing.proposed_fee_kobo || 0),
+        requirements: existing.requirements || '',
+      } : {}),
+    }));
+    setAcceptedSafetyRules(existing?.safety_rules_accepted === true);
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -168,45 +152,51 @@ export const EventApplication: React.FC = () => {
       setError('Please tell us why you want to participate');
       return false;
     }
-    if (selectedType?.requiresFee && (!paystackKey || !window.PaystackPop)) {
+    if (!acceptedSafetyRules) {
+      setError('Please acknowledge the event safety rules');
+      return false;
+    }
+    if (applicationFeeKobo > 0 && (!paystackKey || !window.PaystackPop)) {
       setError('Payment gateway not configured');
       return false;
     }
     return true;
   };
 
-  const handleSuccess = async (ref: string) => {
+  const postApplicationRequest = async (url: string, payload: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Your session has expired. Please sign in again.');
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.error || 'Application request failed');
+    return result;
+  };
+
+  const handleSuccess = async (ref: string, applicationId: string) => {
     setProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        localStorage.setItem('pendingEventApp', JSON.stringify({ ...formData, ref, event_id: id }));
-        navigate('/login?redirect=' + encodeURIComponent(window.location.pathname));
-        return;
-      }
-
-      const amountKobo = Number(formData.proposed_fee_kobo || 0);
-      
-      await supabase.from('event_applications').insert({
-        event_id: id,
-        applicant_id: user.id,
-        application_type: formData.application_type,
-        applicant_name: formData.applicant_name.trim(),
-        applicant_email: formData.applicant_email.trim(),
-        applicant_phone: formData.applicant_phone.trim(),
-        bio: formData.bio.trim(),
-        portfolio_url: formData.portfolio_url.trim() || null,
-        proposed_fee_kobo: amountKobo,
-        requirements: formData.requirements.trim() || null,
-        paystack_reference: ref,
-        application_fee_paid: amountKobo > 0,
-        application_fee_kobo: amountKobo,
-        status: 'pending',
+      await postApplicationRequest('/api/applications/verify-payment', {
+        reference: ref,
+        application_id: applicationId,
       });
 
-      setSuccess('Application submitted successfully! The organizer will review and get back to you.');
-      setTimeout(() => navigate('/events/' + id), 3000);
+      const { data, error: applicationsError } = await supabase
+        .from('event_applications')
+        .select('*')
+        .eq('event_id', id)
+        .eq('applicant_id', user?.id)
+        .order('created_at', { ascending: false });
+      if (!applicationsError) setExistingApplications(data || []);
+      setSuccess('Payment verified and application submitted.');
+      setTimeout(() => navigate('/my-applications'), 1800);
     } catch (err: any) {
       setError(err.message || 'Failed to submit application');
     } finally {
@@ -223,63 +213,48 @@ export const EventApplication: React.FC = () => {
       return;
     }
 
-    const amountKobo = Number(formData.proposed_fee_kobo || 0);
-    
-    // Free application - submit directly
-    if (amountKobo === 0 || !selectedType?.requiresFee) {
-      setProcessing(true);
-      try {
-        await supabase.from('event_applications').insert({
-          event_id: id,
-          applicant_id: user.id,
-          application_type: formData.application_type,
-          applicant_name: formData.applicant_name.trim(),
-          applicant_email: formData.applicant_email.trim(),
-          applicant_phone: formData.applicant_phone.trim(),
-          bio: formData.bio.trim(),
-          portfolio_url: formData.portfolio_url.trim() || null,
-          proposed_fee_kobo: amountKobo,
-          requirements: formData.requirements.trim() || null,
-          application_fee_paid: false,
-          application_fee_kobo: 0,
-          status: 'pending',
-        });
-        setSuccess('Application submitted successfully! The organizer will review and get back to you.');
-        setTimeout(() => navigate('/events/' + id), 3000);
-      } catch (err: any) {
-        setError(err.message || 'Failed to submit application');
-      } finally {
-        setProcessing(false);
-      }
-      return;
-    }
-
-    // Paid application - open Paystack
-    if (!paystackKey || !window.PaystackPop) {
-      setError('Payment gateway temporarily unavailable');
-      return;
-    }
-
     setProcessing(true);
-    const handler = window.PaystackPop.setup({
-      key: paystackKey,
-      email: formData.applicant_email.trim(),
-      amount: amountKobo,
-      currency: 'NGN',
-      ref: `EVTAPP_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      metadata: {
-        type: 'event_application',
+    setError('');
+    try {
+      const result = await postApplicationRequest('/api/applications', {
         event_id: id,
         application_type: formData.application_type,
-        user_id: user.id,
-        applicant_name: formData.applicant_name.trim(),
-        applicant_email: formData.applicant_email.trim(),
-        applicant_phone: formData.applicant_phone.trim(),
-      },
-      callback: (response: any) => handleSuccess(response.reference),
-      onClose: () => setProcessing(false),
-    });
-    handler.openIframe();
+        applicant_name: formData.applicant_name,
+        applicant_phone: formData.applicant_phone,
+        bio: formData.bio,
+        portfolio_url: formData.portfolio_url,
+        proposed_fee_kobo: formData.proposed_fee_kobo,
+        requirements: formData.requirements,
+        safety_rules_accepted: acceptedSafetyRules,
+      });
+
+      if (!result.payment.required) {
+        setExistingApplications((previous) => [result.application, ...previous.filter((application) => application.id !== result.application.id)]);
+        setSuccess('Application submitted successfully. The organizer will review it.');
+        setTimeout(() => navigate('/my-applications'), 1800);
+        setProcessing(false);
+        return;
+      }
+
+      const handler = window.PaystackPop.setup({
+        key: paystackKey,
+        email: user.email,
+        amount: result.payment.amount_kobo,
+        currency: 'NGN',
+        ref: result.payment.reference,
+        metadata: {
+          type: 'event_application',
+          application_id: result.application.id,
+          user_id: user.id,
+        },
+        callback: (response: any) => handleSuccess(response.reference, result.application.id),
+        onClose: () => setProcessing(false),
+      });
+      handler.openIframe();
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit application');
+      setProcessing(false);
+    }
   };
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-green-600" /></div>;
@@ -320,10 +295,17 @@ export const EventApplication: React.FC = () => {
               <div className="text-center space-y-4">
                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-sm border ${statusColors[existingApplication.status]}`}>
                   <CheckCircle2 className="w-4 h-4" />
-                  {statusLabels[existingApplication.status] || existingApplication.status}
+                  {Number(existingApplication.application_fee_kobo) > 0 && !existingApplication.application_fee_paid
+                    ? 'Payment Required'
+                    : statusLabels[existingApplication.status] || existingApplication.status}
                 </div>
                 <p className="text-slate-500">Applied as <strong>{APPLICATION_TYPES.find(t => t.value === existingApplication.application_type)?.label || existingApplication.application_type}</strong></p>
                 <p className="text-sm text-slate-400">Submitted: {new Date(existingApplication.created_at).toLocaleDateString()}</p>
+                <p className="text-sm font-semibold text-slate-600">
+                  Processing fee: {Number(existingApplication.application_fee_kobo) > 0
+                    ? `${existingApplication.application_fee_paid ? 'Paid' : 'Due'} ${formatPrice(existingApplication.application_fee_kobo)}`
+                    : 'No fee'}
+                </p>
               </div>
 
               {existingApplication.review_notes && (
@@ -340,9 +322,17 @@ export const EventApplication: React.FC = () => {
               )}
 
               {existingApplication.status === 'pending' && (
-                <Button variant="outline" onClick={() => navigate('/events/' + id)} className="w-full">
-                  Back to Event
-                </Button>
+                <div className="space-y-3">
+                  {Number(existingApplication.application_fee_kobo) > 0 && !existingApplication.application_fee_paid && (
+                    <Button onClick={handleSubmit} disabled={processing} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                      {processing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
+                      Complete payment {formatPrice(existingApplication.application_fee_kobo)}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => navigate('/events/' + id)} className="w-full">
+                    Back to Event
+                  </Button>
+                </div>
               )}
 
               {existingApplication.status === 'approved' && (
@@ -409,40 +399,30 @@ export const EventApplication: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <div className="space-y-1">
-                    <div className="px-2 py-1 text-xs font-black uppercase text-slate-500">Services & Vendors</div>
-                    {APPLICATION_TYPES.filter(t => t.category === 'vendor').map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{type.label}</span>
-                          <span className="text-xs text-slate-500">{type.description}{type.requiresFee ? ' · Fee applies' : ''}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                    <div className="px-2 py-1 text-xs font-black uppercase text-slate-500">Event Staff</div>
-                    {APPLICATION_TYPES.filter(t => t.category === 'staff').map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{type.label}</span>
-                          <span className="text-xs text-slate-500">{type.description}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                    <div className="px-2 py-1 text-xs font-black uppercase text-slate-500">Participation</div>
-                    {APPLICATION_TYPES.filter(t => t.category === 'participation').map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{type.label}</span>
-                          <span className="text-xs text-slate-500">{type.description}{type.requiresFee ? ' · Fee applies' : ''}</span>
-                        </div>
-                      </SelectItem>
+                    {APPLICATION_CATEGORIES.map(category => (
+                      <div key={category.value}>
+                        <div className="px-2 py-1 text-xs font-black uppercase text-slate-500">{category.label}</div>
+                        {APPLICATION_TYPES.filter(type => type.category === category.value).map(type => {
+                          const fee = getApplicationFeeKobo(type.value) || 0;
+                          return (
+                            <SelectItem key={type.value} value={type.value}>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium">{type.label}</span>
+                                <span className="text-xs text-slate-500">
+                                  {type.description} · {fee > 0 ? `Processing fee ${formatPrice(fee)}` : 'No processing fee'}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </div>
                     ))}
                   </div>
                 </SelectContent>
               </Select>
               {selectedType && (
                 <p className="text-xs text-slate-500 mt-1">
-                  {selectedType.description}
-                  {selectedType.requiresFee && <span className="text-amber-600 font-bold ml-2">Application fee applies</span>}
+                    {selectedType.description} · Processing fee: {formatPrice(applicationFeeKobo)}
                 </p>
               )}
             </div>
@@ -521,11 +501,18 @@ export const EventApplication: React.FC = () => {
               />
             </div>
 
-            {/* Proposed Fee */}
-            {(selectedType?.requiresFee || formData.application_type === 'other') && (
+            {selectedType && (
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <span className="text-sm font-bold text-slate-700">Application processing fee</span>
+                <span className="font-black text-slate-900">{formatPrice(applicationFeeKobo)}</span>
+              </div>
+            )}
+
+            {/* Proposed compensation is informational and never sets the processing fee. */}
+            {(selectedType?.category === 'service_provider' || selectedType?.category === 'talent_contributor') && (
               <div className="space-y-2 pt-4 border-t bg-amber-50/50 p-4 rounded-xl border border-amber-100">
                 <Label className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <CreditCard className="w-3.5 h-3.5" /> Proposed Fee / Budget (NGN)
+                  <CreditCard className="w-3.5 h-3.5" /> Proposed Compensation (NGN, Optional)
                 </Label>
                 <Input
                   type="number"
@@ -536,9 +523,21 @@ export const EventApplication: React.FC = () => {
                   min="0"
                   step="100"
                 />
-                <p className="text-xs text-slate-500">Enter amount in Naira. Application fee: {formatPrice(selectedType?.requiresFee ? 500000 : 0)}</p>
+                <p className="text-xs text-slate-500">This is your requested compensation and does not change the application processing fee.</p>
               </div>
             )}
+
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={acceptedSafetyRules}
+                onChange={event => setAcceptedSafetyRules(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#933D1E]"
+              />
+              <span>
+                I agree to respect consent and personal boundaries, follow event rules, and not engage in harassment, violence, coercion, unwanted contact, sexual misconduct, impersonation, scamming, or unauthorized payments.
+              </span>
+            </label>
 
             {/* Submit Button */}
             <div className="pt-4 border-t space-y-3">
@@ -552,8 +551,8 @@ export const EventApplication: React.FC = () => {
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                     Submitting...
                   </>
-                ) : selectedType?.requiresFee ? (
-                  `Apply & Pay ${formatPrice(500000)}`
+                ) : applicationFeeKobo > 0 ? (
+                  `Apply & Pay ${formatPrice(applicationFeeKobo)}`
                 ) : (
                   'Submit Application'
                 )}

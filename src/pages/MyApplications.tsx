@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { APPLICATION_TYPES } from '../lib/eventApplications';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, XCircle, Loader2, ExternalLink, UserPlus } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, XCircle, Loader2, ExternalLink, UserPlus, CreditCard } from 'lucide-react';
 
 interface ApplicationWithEvent {
   id: string;
@@ -39,27 +40,9 @@ interface ApplicationWithEvent {
   } | null;
 }
 
-const APPLICATION_TYPE_LABELS: Record<string, string> = {
-  catering: 'Caterer',
-  mc: 'Host / MC',
-  dj: 'DJ',
-  photography: 'Photographer / Videographer',
-  decor: 'Decorator',
-  ushers: 'Usher Team',
-  security: 'Security / Bouncer',
-  gate_scanner: 'Gate Scanner',
-  usher: 'Usher',
-  stage_manager: 'Stage Manager',
-  artist_performer: 'Artist / Performer',
-  speaker: 'Speaker',
-  exhibitor: 'Exhibitor',
-  event_partner: 'Event Partner',
-  ambassador: 'Ambassador',
-  sponsor: 'Sponsor',
-  volunteer: 'Volunteer',
-  contestant: 'Contestant',
-  other: 'Other',
-};
+const APPLICATION_TYPE_LABELS = Object.fromEntries(
+  APPLICATION_TYPES.map(({ value, label }) => [value, label]),
+);
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending Review',
@@ -183,8 +166,9 @@ export const MyApplications: React.FC = () => {
             {applications.map((app) => {
               const event = app.events;
               const typeLabel = APPLICATION_TYPE_LABELS[app.application_type] || app.application_type;
-              const statusLabel = STATUS_LABELS[app.status] || app.status;
-              const statusColor = STATUS_COLORS[app.status] || 'bg-gray-100 text-gray-800 border-gray-200';
+              const paymentDue = Number(app.application_fee_kobo) > 0 && !app.application_fee_paid;
+              const statusLabel = paymentDue ? 'Payment Required' : STATUS_LABELS[app.status] || app.status;
+              const statusColor = paymentDue ? STATUS_COLORS.pending : STATUS_COLORS[app.status] || 'bg-gray-100 text-gray-800 border-gray-200';
               
               return (
                 <Card key={app.id} className="border-none shadow-xl overflow-hidden">
@@ -228,6 +212,13 @@ export const MyApplications: React.FC = () => {
                             </Button>
                           </Link>
                         )}
+                        {paymentDue && app.status === 'pending' && event && (
+                          <Link to={`/events/${event.id}/apply`}>
+                            <Button className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold">
+                              <CreditCard className="w-4 h-4 mr-1" /> Continue payment
+                            </Button>
+                          </Link>
+                        )}
                         {app.status === 'pending' || app.status === 'under_review' ? (
                           <Button variant="outline" className="w-full sm:w-auto" disabled>
                             <Loader2 className="w-4 h-4 mr-1" /> Under Review
@@ -253,7 +244,13 @@ export const MyApplications: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase tracking-wider">Application Fee</p>
-                          <p className="font-bold text-slate-900">{app.application_fee_paid ? `Paid: ${formatPrice(app.application_fee_kobo)}` : 'Free'}</p>
+                          <p className="font-bold text-slate-900">
+                            {Number(app.application_fee_kobo) === 0
+                              ? 'No fee'
+                              : app.application_fee_paid
+                                ? `Paid: ${formatPrice(app.application_fee_kobo)}`
+                                : `Due: ${formatPrice(app.application_fee_kobo)}`}
+                          </p>
                         </div>
                         <div>
                           <p className="text-slate-400 uppercase tracking-wider">Final Fee</p>

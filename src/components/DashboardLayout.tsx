@@ -195,6 +195,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
     { icon: Heart, label: 'Confessions Studio', path: '/admin/confessions', hidden: !isAdmin && accountTier !== 'admin', color: "text-pink-600" },
     { icon: Users, label: '★ MPR Partner Center', path: '/mpr', hidden: !isMpr, color: "text-purple-700 dark:text-purple-400 font-black bg-purple-50 dark:bg-purple-950/30" },
     { icon: Ticket, label: 'Event Operations', path: '/manage-events', hidden: !isMpr && !isAdmin, color: "text-emerald-700 font-bold" },
+    { icon: FileText, label: 'Application Review', path: '/manage-applications', hidden: !isMpr && !isAdmin, color: "text-amber-800 font-bold" },
     
     // Event & Ticket Creation (ADMIN & MPR ONLY — Strictly forbidden for Vendors)
     { icon: Ticket, label: '+ Create Event & Ticket', path: '/create-book?type=event', hidden: !isAdmin && !isMpr, color: "text-amber-500 font-bold" },
@@ -596,7 +597,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
         </div>
       )}
 
-      {/* Fixed Bottom Footer with Essential App Navigation: Home, Trivia Hub, Wallet, Setting, Profile */}
+      {/* Fixed Bottom Footer with Essential App Navigation: Home, Trivia Hub, Wallet, Profile */}
       <footer className="fixed bottom-0 left-0 right-0 md:left-64 z-40 border-t border-[#DEB887]/40 dark:border-white/10 bg-[#FAF7F2]/95 dark:bg-[#15100D]/95 backdrop-blur-md py-2 px-3 sm:px-6 shadow-lg">
         <div className="max-w-md mx-auto flex items-center justify-around">
           <Link
@@ -639,19 +640,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
           </Link>
 
           <Link
-            to="/settings"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
-              location.pathname === '/settings'
-                ? "text-[#933D1E] dark:text-[#EAB308] font-bold"
-                : "text-stone-600 dark:text-stone-400 hover:text-[#933D1E] dark:hover:text-[#EAB308] font-medium"
-            )}
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-[11px] tracking-tight">Setting</span>
-          </Link>
-
-          <Link
             to="/profile"
             className={cn(
               "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
@@ -664,18 +652,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, hide
             <span className="text-[11px] tracking-tight">Profile</span>
           </Link>
 
-          <Link
-            to="/my-applications"
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all",
-              location.pathname === '/my-applications'
-                ? "text-green-700 dark:text-[#EAB308] font-bold"
-                : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-[#EAB308] font-medium"
-            )}
-          >
-            <FileText className="w-5 h-5" />
-            <span className="text-[11px] tracking-tight">Applications</span>
-          </Link>
         </div>
       </footer>
 

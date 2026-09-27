@@ -10,6 +10,8 @@ import dotenv from "dotenv";
 import AdmZip from "adm-zip";
 import { canPlayTrivia, isAdmin as checkIsAdmin } from "./src/utils/triviaEligibility";
 import { setupPublishingRoutes } from "./src/server/publishingRoutes";
+import { isMpr as hasMprAccess } from "./src/lib/authorization";
+import { setupApplicationRoutes } from "./src/server/applicationRoutes";
 
 dotenv.config();
 
@@ -1763,6 +1765,22 @@ export async function startServer() {
       res.status(500).json({ error: "Authentication system failure" });
     }
   };
+
+  setupApplicationRoutes(app, {
+    authenticateUser,
+    canReviewApplications: (request) => hasMprAccess({
+      ...(request.profile || {}),
+      email: request.user?.email,
+    }),
+    getAdminClient: () => {
+      const serviceRoleKey = cleanSecret(
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.SUPABASE_SERVICE_KEY ||
+        process.env.SUPABASE_SERVICE_ROLE,
+      );
+      return serviceRoleKey ? getSupabaseAdmin() : null;
+    },
+  });
 
   // Mount Publishing System & Campaign Contracts Routes
   setupPublishingRoutes(app, getSupabase, getSupabaseAdmin, authenticateUser, authenticateAdmin);

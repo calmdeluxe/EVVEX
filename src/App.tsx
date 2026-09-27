@@ -76,6 +76,7 @@ import { DownloadAppPage } from './pages/DownloadAppPage';
 import { EventMarketplace } from './pages/EventMarketplace';
 import { EventApplication } from './pages/EventApplication';
 import { MyApplications } from './pages/MyApplications';
+import { ApplicationReview } from './pages/ApplicationReview';
 import { EventManager } from './pages/EventManager';
 import { MyTickets } from './pages/MyTickets';
 import { EventCheckIn } from './pages/EventCheckIn';
@@ -286,6 +287,7 @@ const AppContent = () => {
             <Route path="/my-tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
             <Route path="/my-applications" element={<PrivateRoute><MyApplications /></PrivateRoute>} />
             <Route path="/manage-events" element={<MPRRoute><EventManager /></MPRRoute>} />
+            <Route path="/manage-applications" element={<MPRRoute><ApplicationReview /></MPRRoute>} />
             <Route path="/check-in/:eventId" element={<PrivateRoute><EventCheckIn /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/dashboard/:tab" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

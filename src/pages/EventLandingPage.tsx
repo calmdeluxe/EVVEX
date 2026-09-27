@@ -582,52 +582,29 @@ export const EventLandingPage: React.FC = () => {
                             <ArrowRight className="w-3.5 h-3.5" />
                           </div>
 
+                          <Link
+                            to={`/events/${ev.id}/apply`}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Apply to participate in ${ev.title}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#933D1E] text-white text-[10px] font-bold hover:bg-[#7D3218] transition-colors"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Apply</span>
+                          </Link>
+
                           {/* Category badge */}
                           <span className="absolute bottom-3 left-3 rounded-full bg-[#0A0F1E]/80 backdrop-blur px-2.5 py-0.5 text-[9px] font-bold text-[#F5E6C8] uppercase tracking-wider">
-                            {ev.category || 'Live Event'}
+                            {ev.displayTag}
                           </span>
                         </div>
-
-                        {/* Card body */}
-                        <div className="flex flex-1 flex-col justify-between p-4">
-                          <div>
-                            <h4 className="font-semibold text-white group-hover:text-[#F5E6C8] transition line-clamp-1 text-base">
-                              {ev.title}
-                            </h4>
-                            <p className="mt-1 text-xs text-slate-400 line-clamp-1">
-                              {dateLabel(ev.startTimeRaw)} · {ev.venue || ev.city || 'Nigeria'}
-                            </p>
-                          </div>
-
-                          {/* Bottom row: Location, Price & Apply */}
-                          <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
-                            <span className="flex items-center gap-1.5 text-xs text-[#D4B483]">
-                              <MapPin className="size-3.5 text-[#D4B483]" />
-                              <span className="font-medium text-slate-300 truncate max-w-[140px]">
-                                {ev.city || ev.venue || 'Nigeria'}
-                              </span>
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-serif text-sm font-medium text-[#F5E6C8]">
-                                {priceLabel(ev.priceKobo)}
-                              </span>
-                              <Link
-                                to={`/events/${ev.id}/apply`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600/90 hover:bg-amber-600 text-white text-xs font-bold transition-all"
-                              >
-                                <UserPlus className="size-3.5" />
-                                <span className="hidden sm:inline">Apply</span>
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
                       </div>
-                   );
-                 })
-               </div>
-             )}
-           </div>
-         </section>
+                    </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* ── 5. FLOATING CIRCULAR COUNTDOWN BADGE ── */}
         <div className="fixed bottom-6 right-6 z-40">
